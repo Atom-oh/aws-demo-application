@@ -8,6 +8,7 @@ require (
 	github.com/hirehub/proto v0.0.0
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/segmentio/kafka-go v0.4.47
+	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.27.0
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.2

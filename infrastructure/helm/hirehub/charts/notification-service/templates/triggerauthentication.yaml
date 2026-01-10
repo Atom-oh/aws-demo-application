@@ -1,0 +1,23 @@
+{{- if and .Values.enabled .Values.keda.enabled }}
+{{- if .Values.global }}
+{{- if .Values.global.kafka }}
+{{- if eq .Values.global.kafka.securityProtocol "SASL_SSL" }}
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{ include "notification-service.fullname" . }}-kafka-auth
+  namespace: {{ include "notification-service.namespace" . }}
+  labels:
+    {{- include "notification-service.labels" . | nindent 4 }}
+spec:
+  secretTargetRef:
+    - parameter: sasl
+      name: {{ include "notification-service.fullname" . }}-secret
+      key: KAFKA_SASL_USERNAME
+    - parameter: password
+      name: {{ include "notification-service.fullname" . }}-secret
+      key: KAFKA_SASL_PASSWORD
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

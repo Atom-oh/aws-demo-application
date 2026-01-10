@@ -125,29 +125,29 @@ export default function AnalyticsPage() {
         {/* Charts Grid */}
         <div className="grid gap-6 lg:grid-cols-2">
           <AnalyticsAreaChart
-            title="User Growth"
-            description="Total registered users over time"
+            title="사용자 증가 추이"
+            description="전체 등록 사용자 변화"
             data={userGrowthData}
             color="#3b82f6"
             height={320}
           />
           <AnalyticsLineChart
-            title="Applications"
-            description="Job applications submitted"
+            title="지원 현황"
+            description="채용공고 지원 수"
             data={applicationData}
             color="#10b981"
             height={320}
           />
           <AnalyticsBarChart
-            title="Jobs by Industry"
-            description="Distribution of active jobs"
+            title="산업별 채용공고"
+            description="진행중인 채용공고 분포"
             data={jobsByCategoryData}
             color="#8b5cf6"
             height={320}
           />
           <AnalyticsPieChart
-            title="Users by Role"
-            description="User distribution across roles"
+            title="역할별 사용자"
+            description="사용자 유형 분포"
             data={usersByRoleData}
             height={320}
           />
@@ -156,13 +156,13 @@ export default function AnalyticsPage() {
         {/* Conversion Funnel */}
         <div className="mt-6">
           <MultiLineChart
-            title="Recruitment Funnel"
-            description="Applications to hires conversion"
+            title="채용 퍼널"
+            description="지원부터 채용까지 전환 현황"
             data={conversionData}
             lines={[
-              { dataKey: 'applications', color: '#3b82f6', name: 'Applications' },
-              { dataKey: 'interviews', color: '#f59e0b', name: 'Interviews' },
-              { dataKey: 'hires', color: '#10b981', name: 'Hires' },
+              { dataKey: 'applications', color: '#3b82f6', name: '지원' },
+              { dataKey: 'interviews', color: '#f59e0b', name: '면접' },
+              { dataKey: 'hires', color: '#10b981', name: '채용' },
             ]}
             height={400}
           />

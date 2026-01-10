@@ -1,0 +1,18 @@
+apiVersion: v2
+name: match-service
+description: HireHub Match Service - AI-powered job-candidate matching (Python/FastAPI/gRPC)
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - match
+  - ai
+  - recommendation
+  - grpc
+  - python
+  - fastapi
+
+maintainers:
+  - name: HireHub Team
+    email: team@hirehub.io

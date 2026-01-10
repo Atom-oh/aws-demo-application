@@ -192,10 +192,10 @@ func (r *CompanyRepository) Verify(ctx context.Context, req *userv1.VerifyCompan
 		RETURNING id, name, business_number, industry, company_size, location, logo_url, description, status, created_at, updated_at`
 
 	var c userv1.Company
-	var bizNum, industry, size, location, logo, desc, status sql.NullString
+	var bizNum, industry, size, location, logo, desc, compStatus sql.NullString
 	var createdAt, updatedAt time.Time
 
-	err := r.db.QueryRowContext(ctx, query, req.Id, stat).Scan(&c.Id, &c.Name, &bizNum, &industry, &size, &location, &logo, &desc, &status, &createdAt, &updatedAt)
+	err := r.db.QueryRowContext(ctx, query, req.Id, stat).Scan(&c.Id, &c.Name, &bizNum, &industry, &size, &location, &logo, &desc, &compStatus, &createdAt, &updatedAt)
 	if err == sql.ErrNoRows {
 		return nil, status.Error(codes.NotFound, "company not found")
 	}
@@ -204,7 +204,7 @@ func (r *CompanyRepository) Verify(ctx context.Context, req *userv1.VerifyCompan
 	}
 
 	c.BusinessNumber, c.Industry, c.Location, c.LogoUrl, c.Description = bizNum.String, industry.String, location.String, logo.String, desc.String
-	c.CompanySize, c.Status = stringToCompanySize(size.String), stringToCompanyStatus(status.String)
+	c.CompanySize, c.Status = stringToCompanySize(size.String), stringToCompanyStatus(compStatus.String)
 	c.CreatedAt, c.UpdatedAt = timestamppb.New(createdAt), timestamppb.New(updatedAt)
 	return &c, nil
 }

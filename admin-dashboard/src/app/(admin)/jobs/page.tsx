@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { Search, Filter, MoreVertical, Eye, Pause, Play } from 'lucide-react';
 import AdminHeader from '@/components/layout/AdminHeader';
 import { Card } from '@/components/ui/Card';
@@ -143,10 +144,10 @@ export default function JobsPage() {
       header: '채용공고',
       sortable: true,
       render: (job) => (
-        <div>
+        <Link href={`/jobs/${job.id}`} className="block hover:opacity-80">
           <p className="font-medium text-gray-900">{job.title}</p>
           <p className="text-sm text-gray-500">{job.location}</p>
-        </div>
+        </Link>
       ),
     },
     {
@@ -190,9 +191,12 @@ export default function JobsPage() {
           >
             {job.status === 'active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </button>
-          <button className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+          <Link
+            href={`/jobs/${job.id}`}
+            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+          >
             <Eye className="h-4 w-4" />
-          </button>
+          </Link>
           <button className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
             <MoreVertical className="h-4 w-4" />
           </button>

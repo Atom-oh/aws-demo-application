@@ -1,0 +1,253 @@
+# HireHub Platform - Production Environment Values
+# Use this file for production deployments on AWS EKS
+
+global:
+  namespace: hirehub
+  createNamespace: true
+  environment: prod
+  region: ap-northeast-2
+
+  # Container registry
+  imageRegistry: "123456789012.dkr.ecr.ap-northeast-2.amazonaws.com"
+  imagePullSecrets:
+    - ecr-registry-credentials
+
+  labels:
+    environment: prod
+    app.kubernetes.io/part-of: hirehub
+    compliance: pci-dss
+
+  # Istio enabled for production
+  istio:
+    enabled: true
+    injection: enabled
+
+  # Monitoring enabled
+  monitoring:
+    enabled: true
+    prometheusNamespace: monitoring
+
+  # IRSA enabled for production
+  irsa:
+    enabled: true
+    roleArnPrefix: "arn:aws:iam::123456789012:role"
+
+  # Aurora PostgreSQL
+  database:
+    host: hirehub-aurora.cluster-xxxxx.ap-northeast-2.rds.amazonaws.com
+    port: 5432
+    sslMode: require
+
+  # ElastiCache
+  cache:
+    host: hirehub-redis.xxxxx.cache.amazonaws.com
+    port: 6379
+
+  # MSK (Kafka)
+  kafka:
+    bootstrapServers: "b-1.hirehub-msk.xxxxx.kafka.ap-northeast-2.amazonaws.com:9096,b-2.hirehub-msk.xxxxx.kafka.ap-northeast-2.amazonaws.com:9096,b-3.hirehub-msk.xxxxx.kafka.ap-northeast-2.amazonaws.com:9096"
+    securityProtocol: SASL_SSL
+
+  # OpenSearch
+  opensearch:
+    host: hirehub-opensearch.ap-northeast-2.es.amazonaws.com
+    port: 443
+
+  # mTLS enabled for production
+  grpc:
+    port: 50051
+    mtls:
+      enabled: true
+      secretName: grpc-mtls-certs
+
+# Service configurations for production - high availability
+user-service:
+  enabled: true
+  replicaCount: 3
+  serviceAccount:
+    irsaRoleArn: "arn:aws:iam::123456789012:role/hirehub-user-service-role"
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: user-service
+          topologyKey: topology.kubernetes.io/zone
+
+job-service:
+  enabled: true
+  replicaCount: 3
+  serviceAccount:
+    irsaRoleArn: "arn:aws:iam::123456789012:role/hirehub-job-service-role"
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+
+resume-service:
+  enabled: true
+  replicaCount: 3
+  serviceAccount:
+    irsaRoleArn: "arn:aws:iam::123456789012:role/hirehub-resume-service-role"
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 15
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+  s3:
+    bucket: "hirehub-prod-resumes"
+    region: "ap-northeast-2"
+  config:
+    vllmEndpoint: "http://vllm-qwen3.hirehub.svc.cluster.local:8000"
+
+apply-service:
+  enabled: true
+  replicaCount: 3
+  serviceAccount:
+    irsaRoleArn: "arn:aws:iam::123456789012:role/hirehub-apply-service-role"
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+
+ai-service:
+  enabled: true
+  replicaCount: 5
+  serviceAccount:
+    irsaRoleArn: "arn:aws:iam::123456789012:role/hirehub-ai-service-role"
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 50
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 4000m
+      memory: 8Gi
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 3
+  config:
+    bedrockRegion: "us-west-2"
+    bedrockModelId: "anthropic.claude-3-sonnet-20240229-v1:0"
+    agentCoreEnabled: "true"
+  knowledgeBase:
+    enabled: true
+    id: "XXXXXXXXXX"
+    region: "us-west-2"
+
+match-service:
+  enabled: true
+  replicaCount: 3
+  serviceAccount:
+    irsaRoleArn: "arn:aws:iam::123456789012:role/hirehub-match-service-role"
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+
+notification-service:
+  enabled: true
+  replicaCount: 3
+  serviceAccount:
+    irsaRoleArn: "arn:aws:iam::123456789012:role/hirehub-notification-service-role"
+  autoscaling:
+    enabled: false  # Using KEDA instead
+  keda:
+    enabled: true
+    pollingInterval: 15
+    cooldownPeriod: 300
+    minReplicaCount: 3
+    maxReplicaCount: 50
+    kafka:
+      topic: "hirehub.notifications"
+      consumerGroup: "notification-service-prod"
+      lagThreshold: "50"
+      activationLagThreshold: "5"
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+  channels:
+    email:
+      enabled: true
+      provider: ses
+    sms:
+      enabled: true
+      provider: sns
+    push:
+      enabled: true
+      provider: sns

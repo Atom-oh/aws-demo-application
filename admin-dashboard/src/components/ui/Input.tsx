@@ -61,8 +61,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               error
                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
                 : 'border-gray-300',
-              leftIcon && 'pl-10',
-              rightIcon && 'pr-10',
+              leftIcon ? 'pl-10' : '',
+              rightIcon ? 'pr-10' : '',
               className
             )}
             {...props}

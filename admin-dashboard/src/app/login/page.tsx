@@ -67,11 +67,11 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary-600 text-white">
             <Shield className="h-7 w-7" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">HireHub Admin</h1>
+          <h1 className="text-2xl font-bold text-gray-900">HireHub 관리자</h1>
           <p className="mt-2 text-sm text-gray-500">
             {showMFA
-              ? 'Enter your MFA code to continue'
-              : 'Sign in to access the admin dashboard'}
+              ? 'MFA 코드를 입력하세요'
+              : '관리자 대시보드에 로그인하세요'}
           </p>
         </div>
 
@@ -86,9 +86,9 @@ export default function LoginPage() {
         {showMFA ? (
           <form onSubmit={handleMFAVerify} className="space-y-6">
             <Input
-              label="MFA Code"
+              label="MFA 코드"
               type="text"
-              placeholder="Enter 6-digit code"
+              placeholder="6자리 코드 입력"
               value={mfaCode}
               onChange={(e) => setMfaCode(e.target.value)}
               leftIcon={<Lock className="h-4 w-4" />}
@@ -102,7 +102,7 @@ export default function LoginPage() {
               className="w-full"
               size="lg"
             >
-              Verify
+              확인
             </Button>
             <button
               type="button"
@@ -113,14 +113,14 @@ export default function LoginPage() {
               }}
               className="w-full text-sm text-gray-500 hover:text-gray-700"
             >
-              Back to login
+              로그인으로 돌아가기
             </button>
           </form>
         ) : (
           /* Login Form */
           <form onSubmit={handleLogin} className="space-y-6">
             <Input
-              label="Email"
+              label="이메일"
               type="email"
               placeholder="admin@hirehub.com"
               value={email}
@@ -130,9 +130,9 @@ export default function LoginPage() {
               required
             />
             <Input
-              label="Password"
+              label="비밀번호"
               type="password"
-              placeholder="Enter your password"
+              placeholder="비밀번호를 입력하세요"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               leftIcon={<Lock className="h-4 w-4" />}
@@ -145,15 +145,15 @@ export default function LoginPage() {
               className="w-full"
               size="lg"
             >
-              Sign in
+              로그인
             </Button>
           </form>
         )}
 
         {/* Footer */}
         <div className="mt-8 text-center text-xs text-gray-400">
-          <p>MFA is required for all admin accounts.</p>
-          <p className="mt-1">Contact IT support if you need assistance.</p>
+          <p>모든 관리자 계정은 MFA가 필수입니다.</p>
+          <p className="mt-1">도움이 필요하시면 IT 지원팀에 문의하세요.</p>
         </div>
       </Card>
     </div>

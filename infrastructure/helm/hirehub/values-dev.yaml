@@ -1,0 +1,166 @@
+# HireHub Platform - Development Environment Values
+# Use this file for development/local deployments
+
+global:
+  namespace: hirehub-dev
+  createNamespace: true
+  environment: dev
+  region: ap-northeast-2
+
+  labels:
+    environment: dev
+    app.kubernetes.io/part-of: hirehub
+
+  # Istio disabled in dev
+  istio:
+    enabled: false
+
+  # Monitoring enabled
+  monitoring:
+    enabled: true
+    prometheusNamespace: monitoring
+
+  # IRSA disabled in dev (use local credentials)
+  irsa:
+    enabled: false
+
+  # Local database for dev
+  database:
+    host: postgresql.hirehub-dev.svc.cluster.local
+    port: 5432
+    sslMode: disable
+
+  # Local cache
+  cache:
+    host: redis.hirehub-dev.svc.cluster.local
+    port: 6379
+
+  # Local Kafka
+  kafka:
+    bootstrapServers: "kafka.hirehub-dev.svc.cluster.local:9092"
+    securityProtocol: PLAINTEXT
+
+  # Local OpenSearch
+  opensearch:
+    host: opensearch.hirehub-dev.svc.cluster.local
+    port: 9200
+
+  # mTLS disabled in dev
+  grpc:
+    port: 50051
+    mtls:
+      enabled: false
+
+# Service configurations for dev - minimal resources
+user-service:
+  enabled: true
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  podDisruptionBudget:
+    enabled: false
+
+job-service:
+  enabled: true
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  podDisruptionBudget:
+    enabled: false
+
+resume-service:
+  enabled: true
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  podDisruptionBudget:
+    enabled: false
+  s3:
+    bucket: "hirehub-dev-resumes"
+    region: "ap-northeast-2"
+
+apply-service:
+  enabled: true
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  podDisruptionBudget:
+    enabled: false
+
+ai-service:
+  enabled: true
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  podDisruptionBudget:
+    enabled: false
+  config:
+    bedrockRegion: "us-west-2"
+    bedrockModelId: "anthropic.claude-3-haiku-20240307-v1:0"  # Smaller model for dev
+
+match-service:
+  enabled: true
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  podDisruptionBudget:
+    enabled: false
+
+notification-service:
+  enabled: true
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+  keda:
+    enabled: false  # KEDA disabled in dev
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  podDisruptionBudget:
+    enabled: false
