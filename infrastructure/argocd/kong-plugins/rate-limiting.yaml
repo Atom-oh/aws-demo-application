@@ -1,0 +1,76 @@
+# Kong Rate Limiting Plugin
+# Global rate limiting configuration using local policy (no Redis dependency for demo)
+# Limits: 100 requests per minute per consumer/IP
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongClusterPlugin
+metadata:
+  name: global-rate-limiting
+  labels:
+    global: "true"
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: hirehub
+    app.kubernetes.io/component: plugin
+  annotations:
+    kubernetes.io/ingress.class: kong
+    # Description for documentation
+    konghq.com/description: "Global rate limiting plugin - 100 requests per minute"
+plugin: rate-limiting
+config:
+  # Rate limits
+  minute: 100
+  # Use local policy for demo (no Redis dependency)
+  # For production, switch to 'redis' or 'cluster' policy
+  policy: local
+  # Fault tolerance - continue serving if rate limiting fails
+  fault_tolerant: true
+  # Show rate limit headers to clients
+  hide_client_headers: false
+  # Rate limit by consumer first, then by IP
+  limit_by: consumer
+  # Additional limits for burst protection
+  second: 10
+  # Error response customization
+  error_code: 429
+  error_message: "Rate limit exceeded. Please retry after some time."
+---
+# Service-specific rate limiting for high-traffic endpoints
+# Can be applied to specific services via annotations
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: api-rate-limiting
+  namespace: kong
+  labels:
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: hirehub
+    app.kubernetes.io/component: plugin
+plugin: rate-limiting
+config:
+  minute: 200
+  policy: local
+  fault_tolerant: true
+  hide_client_headers: false
+  limit_by: ip
+  second: 20
+---
+# Stricter rate limiting for authentication endpoints
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: auth-rate-limiting
+  namespace: kong
+  labels:
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: hirehub
+    app.kubernetes.io/component: plugin
+plugin: rate-limiting
+config:
+  minute: 30
+  policy: local
+  fault_tolerant: true
+  hide_client_headers: false
+  limit_by: ip
+  second: 5
+  error_code: 429
+  error_message: "Too many authentication attempts. Please wait before retrying."

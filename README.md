@@ -138,6 +138,34 @@ AWS 클라우드 네이티브 기술을 활용한 AI 기반 채용 플랫폼 데
 
 ### API Gateway
 - **Kong Gateway**: API Gateway, Rate Limiting, Circuit Breaker, Auth (JWT/OAuth2)
+  - DB-less 모드 (선언적 구성)
+  - Kong Ingress Controller로 K8s 네이티브 통합
+  - ArgoCD를 통한 GitOps 배포
+
+### GitOps (ArgoCD)
+K8s 워크로드는 ArgoCD를 통해 GitOps 방식으로 배포됩니다.
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                         ArgoCD                                  │
+│                    (App of Apps 패턴)                           │
+├────────────────────────────────────────────────────────────────┤
+│  root-app ──┬── kong (Helm: kong/kong)                         │
+│             ├── kong-plugins (KongClusterPlugin CRDs)          │
+│             └── hirehub-services (Helm: infrastructure/helm/)  │
+├────────────────────────────────────────────────────────────────┤
+│  ApplicationSet (hirehub-envs.yaml)                            │
+│    ├── hirehub-services-dev  (namespace: hirehub-dev)          │
+│    └── hirehub-services-prod (namespace: hirehub-prod)         │
+└────────────────────────────────────────────────────────────────┘
+```
+
+| 구분 | 도구 | 경로 |
+|------|------|------|
+| AWS 인프라 | Terraform | `infrastructure/terraform/` |
+| EKS Addons | Terraform | EKS Blueprint addons |
+| K8s 워크로드 | ArgoCD | `infrastructure/argocd/` |
+| Helm Charts | Helm | `infrastructure/helm/` |
 
 ---
 
@@ -156,10 +184,16 @@ demo/
 ├── frontend/
 │   ├── web/                  # Next.js (사용자)
 │   └── admin/                # Next.js (어드민)
-├── infra/
-│   ├── terraform/            # AWS 인프라
-│   ├── helm/                 # Kubernetes 배포
-│   └── cdk/                  # (선택) CDK 버전
+├── infrastructure/
+│   ├── terraform/            # AWS 인프라 (Terraform)
+│   ├── helm/                 # Kubernetes Helm Charts
+│   ├── argocd/               # ArgoCD Applications (GitOps)
+│   │   ├── install/          # ArgoCD 설치 values
+│   │   ├── projects/         # AppProject 정의
+│   │   ├── applications/     # Application manifests
+│   │   ├── applicationsets/  # Multi-env ApplicationSet
+│   │   └── kong-plugins/     # Kong CRD manifests
+│   └── k8s/                  # Kustomize 베이스
 ├── proto/                    # gRPC Proto 정의
 ├── scripts/
 │   ├── mock-data/            # Mock data 생성 스크립트

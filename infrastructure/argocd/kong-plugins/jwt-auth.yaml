@@ -1,0 +1,56 @@
+# Kong JWT Authentication Plugin
+# JWT validation for protected API endpoints
+# Works with Cognito-issued tokens
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongClusterPlugin
+metadata:
+  name: jwt-auth
+  labels:
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: hirehub
+    app.kubernetes.io/component: plugin
+  annotations:
+    kubernetes.io/ingress.class: kong
+    konghq.com/description: "JWT authentication plugin for API protection"
+plugin: jwt
+config:
+  # Claims to verify
+  claims_to_verify:
+    - exp  # Token expiration
+  # Key identifier claim
+  key_claim_name: kid
+  # Where to find the token
+  header_names:
+    - Authorization
+  # URI argument name (for query parameter tokens)
+  uri_param_names:
+    - jwt
+  # Cookie names (if using cookie-based auth)
+  cookie_names: []
+  # Maximum allowed clock skew (seconds)
+  maximum_expiration: 0
+  # Anonymous consumer for unauthenticated access (optional)
+  # anonymous: null
+  # Run on preflight requests
+  run_on_preflight: true
+---
+# JWT plugin for specific service protection
+# Apply to services that require authentication
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: service-jwt-auth
+  namespace: kong
+  labels:
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: hirehub
+    app.kubernetes.io/component: plugin
+plugin: jwt
+config:
+  claims_to_verify:
+    - exp
+  key_claim_name: kid
+  header_names:
+    - Authorization
+  run_on_preflight: true

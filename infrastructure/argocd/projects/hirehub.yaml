@@ -1,0 +1,81 @@
+# ArgoCD AppProject for HireHub Platform
+# This project defines the boundaries for HireHub applications
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: hirehub
+  namespace: argocd
+  # Finalizer to prevent accidental deletion
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  # Project description
+  description: HireHub AI-powered recruitment platform
+
+  # Source repositories allowed for this project
+  # Using wildcard for demo - restrict in production
+  sourceRepos:
+    - '*'
+
+  # Destination clusters and namespaces
+  destinations:
+    # HireHub microservices namespaces (multi-environment)
+    - namespace: hirehub
+      server: https://kubernetes.default.svc
+    - namespace: hirehub-dev
+      server: https://kubernetes.default.svc
+    - namespace: hirehub-prod
+      server: https://kubernetes.default.svc
+
+    # Kong API Gateway namespace
+    - namespace: kong
+      server: https://kubernetes.default.svc
+
+    # ArgoCD namespace (for self-management)
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+
+  # Cluster-scoped resources allowed to be deployed
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
+  # Namespace-scoped resources allowed (all by default)
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
+  # Deny list for namespace resources (none for demo)
+  namespaceResourceBlacklist: []
+
+  # Orphaned resources monitoring
+  orphanedResources:
+    warn: true
+    ignore: []
+
+  # Roles for this project (RBAC)
+  roles:
+    # Admin role - full access to project
+    - name: admin
+      description: Admin access to HireHub project
+      policies:
+        - p, proj:hirehub:admin, applications, *, hirehub/*, allow
+      groups:
+        - hirehub-admins
+
+    # Developer role - read-only + sync
+    - name: developer
+      description: Developer access to HireHub project
+      policies:
+        - p, proj:hirehub:developer, applications, get, hirehub/*, allow
+        - p, proj:hirehub:developer, applications, sync, hirehub/*, allow
+      groups:
+        - hirehub-developers
+
+  # Sync windows (optional - define maintenance windows)
+  # syncWindows:
+  #   - kind: allow
+  #     schedule: '0 * * * *'
+  #     duration: 1h
+  #     applications:
+  #       - '*'

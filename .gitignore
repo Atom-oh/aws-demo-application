@@ -1,0 +1,13 @@
+
+# Terraform
+**/.terraform/
+*.terraform.lock.hcl
+
+# Python
+**/__pycache__/
+*.pyc
+.coverage
+
+# IDE
+.idea/
+.vscode/

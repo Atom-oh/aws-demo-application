@@ -1,0 +1,144 @@
+# HireHub Multi-Environment ApplicationSet
+# Generates ArgoCD Applications for each environment (dev, prod)
+# Each environment uses its own values file and deploys to a dedicated namespace
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: hirehub-services
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: hirehub-services
+    app.kubernetes.io/part-of: hirehub
+    app.kubernetes.io/component: microservices
+spec:
+  # Go templates for more flexible templating
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+
+  # List generator for environments
+  # Each entry generates one ArgoCD Application
+  generators:
+    - list:
+        elements:
+          # Development environment
+          - env: dev
+            namespace: hirehub-dev
+            targetRevision: HEAD
+            syncWave: "2"
+            autoSync: true
+            prune: true
+            selfHeal: true
+          # Production environment
+          - env: prod
+            namespace: hirehub-prod
+            targetRevision: main  # Production deploys from main branch only
+            syncWave: "2"
+            autoSync: false  # Manual sync for production
+            prune: false     # Don't auto-prune in production
+            selfHeal: true   # Self-heal enabled for drift correction
+
+  # Application template - generates one Application per environment
+  template:
+    metadata:
+      name: 'hirehub-services-{{ .env }}'
+      namespace: argocd
+      labels:
+        app.kubernetes.io/name: hirehub-services
+        app.kubernetes.io/part-of: hirehub
+        app.kubernetes.io/component: microservices
+        app.kubernetes.io/instance: '{{ .env }}'
+        environment: '{{ .env }}'
+      annotations:
+        argocd.argoproj.io/sync-wave: '{{ .syncWave }}'
+        notifications.argoproj.io/subscribe.on-sync-succeeded.slack: hirehub-deployments
+        notifications.argoproj.io/subscribe.on-sync-failed.slack: hirehub-alerts
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      # Project reference
+      project: hirehub
+
+      # Source configuration - local Helm chart
+      source:
+        repoURL: https://github.com/Atom-oh/aws-demo-application
+        targetRevision: '{{ .targetRevision }}'
+        path: infrastructure/helm/hirehub
+        helm:
+          releaseName: 'hirehub-{{ .env }}'
+          # Values files: base + environment-specific
+          valueFiles:
+            - values.yaml
+            - 'values-{{ .env }}.yaml'
+
+      # Destination cluster and namespace
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{ .namespace }}'
+
+      # Sync policy - varies by environment
+      syncPolicy:
+        automated:
+          prune: '{{ .prune }}'
+          selfHeal: '{{ .selfHeal }}'
+          allowEmpty: false
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - ApplyOutOfSyncOnly=true
+          - RespectIgnoreDifferences=true
+          - PruneLast=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+
+      # Revision history limit
+      revisionHistoryLimit: 10
+
+      # Ignore differences for dynamic fields
+      ignoreDifferences:
+        # Service clusterIP is dynamically assigned
+        - group: ""
+          kind: Service
+          jsonPointers:
+            - /spec/clusterIP
+            - /spec/clusterIPs
+        # Deployment replicas may be managed by HPA/KEDA
+        - group: apps
+          kind: Deployment
+          jsonPointers:
+            - /spec/replicas
+        # Secret data may be modified by external secrets operator
+        - group: ""
+          kind: Secret
+          jsonPointers:
+            - /data
+        # ConfigMap checksums in deployment annotations
+        - group: apps
+          kind: Deployment
+          jsonPointers:
+            - /spec/template/metadata/annotations/checksum~1config
+
+  # Sync policy for the ApplicationSet itself
+  syncPolicy:
+    # Preserve resources on ApplicationSet deletion
+    preserveResourcesOnDeletion: true
+
+  # Strategy for applying changes
+  strategy:
+    type: RollingSync
+    rollingSync:
+      steps:
+        # Deploy to dev first, then prod
+        - matchExpressions:
+            - key: environment
+              operator: In
+              values:
+                - dev
+        - matchExpressions:
+            - key: environment
+              operator: In
+              values:
+                - prod

@@ -1,0 +1,246 @@
+# Kong API Gateway Application
+# Replaces Terraform-managed Kong deployment with ArgoCD GitOps approach
+# DB-less mode with Kong Ingress Controller for Kubernetes-native integration
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kong
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: hirehub
+    app.kubernetes.io/component: api-gateway
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  # Project reference
+  project: hirehub
+
+  # Source configuration - Kong Helm chart
+  source:
+    repoURL: https://charts.konghq.com
+    chart: kong
+    targetRevision: 2.38.0
+    helm:
+      releaseName: kong
+      values: |
+        # ===========================================
+        # Kong Ingress Controller Configuration
+        # ===========================================
+        ingressController:
+          enabled: true
+          installCRDs: false  # CRDs managed separately
+          env:
+            kong_admin_token:
+              valueFrom:
+                secretKeyRef:
+                  name: kong-admin-token
+                  key: token
+                  optional: true
+
+        # ===========================================
+        # DB-less Mode Configuration
+        # ===========================================
+        env:
+          database: "off"
+          # Declarative config via ConfigMaps/CRDs
+          declarative_config: /kong_dbless/kong.yml
+          # Proxy settings
+          proxy_access_log: /dev/stdout
+          proxy_error_log: /dev/stderr
+          admin_access_log: /dev/stdout
+          admin_error_log: /dev/stderr
+          # Performance tuning
+          nginx_worker_processes: "auto"
+          nginx_http_keepalive_timeout: "60s"
+          # Enable bundled plugins
+          plugins: bundled
+
+        # ===========================================
+        # Deployment Configuration
+        # ===========================================
+        replicaCount: 2
+
+        # Pod disruption budget for HA
+        podDisruptionBudget:
+          enabled: true
+          minAvailable: 1
+
+        # Update strategy
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 1
+            maxSurge: 1
+
+        # Pod anti-affinity for HA
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: kong
+                  topologyKey: kubernetes.io/hostname
+
+        # ===========================================
+        # Resource Configuration
+        # ===========================================
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 2000m
+            memory: 2Gi
+
+        # ===========================================
+        # Proxy Service Configuration (AWS NLB)
+        # ===========================================
+        proxy:
+          enabled: true
+          type: LoadBalancer
+          annotations:
+            service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+            service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+            service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+            service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-healthy-threshold: "2"
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-unhealthy-threshold: "2"
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: "10"
+          http:
+            enabled: true
+            containerPort: 8000
+            servicePort: 80
+          tls:
+            enabled: true
+            containerPort: 8443
+            servicePort: 443
+          labels:
+            app.kubernetes.io/component: proxy
+
+        # ===========================================
+        # Admin API Configuration (ClusterIP)
+        # ===========================================
+        admin:
+          enabled: true
+          type: ClusterIP
+          http:
+            enabled: true
+            containerPort: 8001
+            servicePort: 8001
+          tls:
+            enabled: false
+          labels:
+            app.kubernetes.io/component: admin
+          # Admin API access restricted to cluster-internal only
+          annotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "8001"
+
+        # ===========================================
+        # Status Endpoint (for readiness/liveness)
+        # ===========================================
+        status:
+          enabled: true
+          http:
+            enabled: true
+            containerPort: 8100
+          tls:
+            enabled: false
+
+        # ===========================================
+        # Prometheus Metrics Configuration
+        # ===========================================
+        serviceMonitor:
+          enabled: true
+          namespace: kong
+          interval: 30s
+          labels:
+            release: prometheus
+
+        # Prometheus plugin for detailed metrics
+        podAnnotations:
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "8100"
+          prometheus.io/path: "/metrics"
+
+        # ===========================================
+        # Health Checks
+        # ===========================================
+        readinessProbe:
+          httpGet:
+            path: /status/ready
+            port: status
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+
+        livenessProbe:
+          httpGet:
+            path: /status
+            port: status
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+
+        # ===========================================
+        # Security Context
+        # ===========================================
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+
+        containerSecurityContext:
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+
+        # ===========================================
+        # DB-less Config Mount (empty for CRD-based config)
+        # ===========================================
+        dblessConfig:
+          configMap: ""
+          config: |
+            _format_version: "3.0"
+            _transform: true
+
+  # Destination
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kong
+
+  # Sync policy
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m
+
+  # Ignore differences that change dynamically
+  ignoreDifferences:
+    - group: ""
+      kind: Service
+      jsonPointers:
+        - /spec/clusterIP
+        - /spec/clusterIPs
+    - group: ""
+      kind: Service
+      jsonPointers:
+        - /metadata/annotations/service.beta.kubernetes.io~1aws-load-balancer-target-group-attributes

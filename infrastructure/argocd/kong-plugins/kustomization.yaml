@@ -1,0 +1,25 @@
+# Kustomization for Kong Plugins
+# Manages Kong CRD-based plugin configurations
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: kong-plugins
+  labels:
+    app.kubernetes.io/name: kong-plugins
+    app.kubernetes.io/part-of: hirehub
+
+# Plugin manifests
+resources:
+  - rate-limiting.yaml
+  - cors.yaml
+  - jwt-auth.yaml
+  - request-termination.yaml
+
+# Common labels for all resources
+commonLabels:
+  app.kubernetes.io/managed-by: argocd
+  environment: demo
+
+# Namespace for namespaced resources
+namespace: kong

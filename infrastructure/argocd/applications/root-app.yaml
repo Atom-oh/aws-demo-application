@@ -1,0 +1,65 @@
+# Root Application - App of Apps Pattern
+# This application manages all other ArgoCD applications
+# Reference: https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-app
+  namespace: argocd
+  # Finalizer for cascade deletion
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  # Project reference
+  project: hirehub
+
+  # Source configuration
+  source:
+    # Repository URL - update with your actual repo
+    repoURL: https://github.com/Atom-oh/aws-demo-application
+    targetRevision: HEAD
+    path: infrastructure/argocd/applications
+
+    # Only include application manifests (exclude root-app itself to avoid recursion issues)
+    directory:
+      recurse: false
+      include: '{kong.yaml,kong-plugins.yaml,hirehub.yaml}'
+
+  # Destination cluster and namespace
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  # Sync policy
+  syncPolicy:
+    # Automated sync configuration
+    automated:
+      # Auto-prune resources that are no longer defined in Git
+      prune: true
+      # Self-heal: revert manual changes made to live cluster
+      selfHeal: true
+      # Allow empty: don't fail if there are no resources
+      allowEmpty: false
+
+    # Sync options
+    syncOptions:
+      # Create namespace if it doesn't exist
+      - CreateNamespace=true
+      # Respect ignore differences
+      - RespectIgnoreDifferences=true
+      # Apply out of sync only
+      - ApplyOutOfSyncOnly=true
+
+    # Retry configuration for failed syncs
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Ignore differences for specific fields (reduces noise)
+  ignoreDifferences: []
+
+  # Revision history limit
+  revisionHistoryLimit: 10

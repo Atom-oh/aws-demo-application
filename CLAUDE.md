@@ -30,6 +30,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Messaging**: MSK (Kafka)
 - **Auth**: Cognito + 소셜 로그인
 - **API Gateway**: Kong (Rate Limiting, Circuit Breaker, Auth)
+- **GitOps**: ArgoCD (App of Apps pattern)
+
+### Deployment Strategy
+| Layer | Tool | Description |
+|-------|------|-------------|
+| AWS 리소스 (VPC, EKS, Aurora 등) | Terraform | `infrastructure/terraform/` |
+| EKS Addons | Terraform | EKS Blueprint addons |
+| K8s 워크로드 (Kong, Services) | ArgoCD | `infrastructure/argocd/` |
+
+### ArgoCD Structure
+```
+infrastructure/argocd/
+├── install/              # ArgoCD Helm values
+├── projects/             # AppProject (hirehub)
+├── applications/         # Application manifests
+│   ├── root-app.yaml     # App of Apps root
+│   ├── kong.yaml         # Kong API Gateway
+│   ├── kong-plugins.yaml # Kong plugins
+│   └── hirehub.yaml      # HireHub services
+├── applicationsets/      # Multi-env deployment
+│   └── hirehub-envs.yaml # dev/prod ApplicationSet
+└── kong-plugins/         # Kong CRD manifests
+```
 
 ## Development Commands
 

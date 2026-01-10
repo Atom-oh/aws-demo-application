@@ -1,0 +1,47 @@
+# Kong Request Termination Plugin
+# Used for circuit breaker functionality and maintenance mode
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: circuit-breaker
+  namespace: kong
+  labels:
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: hirehub
+    app.kubernetes.io/component: plugin
+  annotations:
+    konghq.com/description: "Circuit breaker - returns 503 when service unavailable"
+plugin: request-termination
+config:
+  status_code: 503
+  message: "Service temporarily unavailable. Please try again later."
+  content_type: "application/json"
+  body: |
+    {
+      "error": "service_unavailable",
+      "message": "Service temporarily unavailable. Please try again later.",
+      "code": 503
+    }
+---
+# Maintenance mode plugin
+# Apply to services during planned maintenance
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: maintenance-mode
+  namespace: kong
+  labels:
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: hirehub
+    app.kubernetes.io/component: plugin
+plugin: request-termination
+config:
+  status_code: 503
+  content_type: "application/json"
+  body: |
+    {
+      "error": "maintenance",
+      "message": "System is under scheduled maintenance. Please try again later.",
+      "code": 503
+    }

@@ -1,0 +1,43 @@
+# Kong Plugins Application
+# Manages Kong plugin configurations via ArgoCD
+# Depends on Kong application being deployed first
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kong-plugins
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: kong-plugins
+    app.kubernetes.io/part-of: hirehub
+    app.kubernetes.io/component: api-gateway-plugins
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"  # Deploy after Kong
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: hirehub
+
+  source:
+    # Source from git repository
+    # Update repoURL to your actual repository URL
+    repoURL: https://github.com/Atom-oh/aws-demo-application
+    targetRevision: HEAD
+    path: infrastructure/argocd/kong-plugins
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kong
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false  # Kong namespace created by Kong app
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m
