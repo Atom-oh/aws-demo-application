@@ -1,0 +1,238 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hirehub-services
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/hirehub-demo.git
+    targetRevision: HEAD
+    path: infrastructure/helm/hirehub
+    helm:
+      releaseName: hirehub
+      valueFiles:
+        - values-dev.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hirehub
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+# Individual service applications for more granular control
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: user-service
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: hirehub
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/hirehub-demo.git
+    targetRevision: HEAD
+    path: infrastructure/helm/hirehub/charts/user-service
+    helm:
+      releaseName: user-service
+      parameters:
+        - name: image.repository
+          value: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/user-service
+        - name: image.tag
+          value: latest
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hirehub
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: job-service
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: hirehub
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/hirehub-demo.git
+    targetRevision: HEAD
+    path: infrastructure/helm/hirehub/charts/job-service
+    helm:
+      releaseName: job-service
+      parameters:
+        - name: image.repository
+          value: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/job-service
+        - name: image.tag
+          value: latest
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hirehub
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: resume-service
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: hirehub
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/hirehub-demo.git
+    targetRevision: HEAD
+    path: infrastructure/helm/hirehub/charts/resume-service
+    helm:
+      releaseName: resume-service
+      parameters:
+        - name: image.repository
+          value: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/resume-service
+        - name: image.tag
+          value: latest
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hirehub
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: apply-service
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: hirehub
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/hirehub-demo.git
+    targetRevision: HEAD
+    path: infrastructure/helm/hirehub/charts/apply-service
+    helm:
+      releaseName: apply-service
+      parameters:
+        - name: image.repository
+          value: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/apply-service
+        - name: image.tag
+          value: latest
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hirehub
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: match-service
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: hirehub
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/hirehub-demo.git
+    targetRevision: HEAD
+    path: infrastructure/helm/hirehub/charts/match-service
+    helm:
+      releaseName: match-service
+      parameters:
+        - name: image.repository
+          value: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/match-service
+        - name: image.tag
+          value: latest
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hirehub
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-service
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: hirehub
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/hirehub-demo.git
+    targetRevision: HEAD
+    path: infrastructure/helm/hirehub/charts/ai-service
+    helm:
+      releaseName: ai-service
+      parameters:
+        - name: image.repository
+          value: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/ai-service
+        - name: image.tag
+          value: latest
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hirehub
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: notification-service
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: hirehub
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/hirehub-demo.git
+    targetRevision: HEAD
+    path: infrastructure/helm/hirehub/charts/notification-service
+    helm:
+      releaseName: notification-service
+      parameters:
+        - name: image.repository
+          value: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/notification-service
+        - name: image.tag
+          value: latest
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hirehub
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
