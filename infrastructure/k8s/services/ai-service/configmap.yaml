@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-service-config
+  namespace: hirehub
+  labels:
+    app.kubernetes.io/name: ai-service
+    app.kubernetes.io/component: backend
+data:
+  # Application configuration
+  APP_ENV: "production"
+  APP_PORT: "8000"
+  APP_HOST: "0.0.0.0"
+  APP_WORKERS: "2"
+
+  # Database configuration
+  DATABASE_NAME: "hirehub_ai"
+  DATABASE_SSL_MODE: "require"
+  DATABASE_POOL_SIZE: "10"
+
+  # AWS Bedrock configuration
+  AWS_REGION: "ap-northeast-2"
+  BEDROCK_MODEL_ID: "anthropic.claude-3-sonnet-20240229-v1:0"
+  BEDROCK_EMBEDDING_MODEL_ID: "amazon.titan-embed-text-v1"
+  BEDROCK_MAX_TOKENS: "4096"
+  BEDROCK_TEMPERATURE: "0.7"
+
+  # Bedrock Knowledge Base (RAG)
+  BEDROCK_KB_ID: ""
+  BEDROCK_KB_RETRIEVAL_COUNT: "5"
+
+  # vLLM (QWEN3 for PII masking)
+  VLLM_ENDPOINT: "http://vllm-service:8000/v1"
+  VLLM_MODEL: "Qwen/Qwen3-8B"
+  VLLM_MAX_TOKENS: "2048"
+
+  # Kafka configuration
+  KAFKA_CONSUMER_GROUP_ID: "ai-service-group"
+  KAFKA_TOPIC_RESUME_UPLOADED: "resume.uploaded"
+  KAFKA_TOPIC_RESUME_PROCESSED: "resume.processed"
+  KAFKA_TOPIC_JOB_CREATED: "job.created"
+  KAFKA_TOPIC_MATCH_CALCULATED: "match.calculated"
+
+  # Vector database (pgvector)
+  VECTOR_DIMENSION: "1536"
+  VECTOR_SIMILARITY_THRESHOLD: "0.7"
+
+  # Logging
+  LOG_LEVEL: "INFO"
+  LOG_FORMAT: "json"
+
+  # Tracing
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability:4317"
+  OTEL_SERVICE_NAME: "ai-service"
+
+  # Rate limiting
+  RATE_LIMIT_PII_MASKING: "100"
+  RATE_LIMIT_EMBEDDING: "200"
+  RATE_LIMIT_MATCHING: "50"

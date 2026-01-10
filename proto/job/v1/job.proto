@@ -1,0 +1,349 @@
+syntax = "proto3";
+
+package hirehub.job.v1;
+
+option go_package = "github.com/hirehub/proto/job/v1;jobv1";
+option java_package = "com.hirehub.proto.job.v1";
+option java_multiple_files = true;
+
+import "google/protobuf/timestamp.proto";
+import "common/v1/common.proto";
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum JobType {
+  JOB_TYPE_UNSPECIFIED = 0;
+  JOB_TYPE_FULL_TIME = 1;
+  JOB_TYPE_PART_TIME = 2;
+  JOB_TYPE_CONTRACT = 3;
+  JOB_TYPE_INTERNSHIP = 4;
+  JOB_TYPE_FREELANCE = 5;
+}
+
+enum ExperienceLevel {
+  EXPERIENCE_LEVEL_UNSPECIFIED = 0;
+  EXPERIENCE_LEVEL_ENTRY = 1;      // 신입
+  EXPERIENCE_LEVEL_JUNIOR = 2;     // 1-3년
+  EXPERIENCE_LEVEL_MID = 3;        // 4-7년
+  EXPERIENCE_LEVEL_SENIOR = 4;     // 8-12년
+  EXPERIENCE_LEVEL_LEAD = 5;       // 12년 이상
+  EXPERIENCE_LEVEL_EXECUTIVE = 6;  // 임원급
+}
+
+enum RemoteType {
+  REMOTE_TYPE_UNSPECIFIED = 0;
+  REMOTE_TYPE_ONSITE = 1;       // 출근
+  REMOTE_TYPE_REMOTE = 2;       // 원격
+  REMOTE_TYPE_HYBRID = 3;       // 혼합
+}
+
+enum JobStatus {
+  JOB_STATUS_UNSPECIFIED = 0;
+  JOB_STATUS_DRAFT = 1;
+  JOB_STATUS_OPEN = 2;
+  JOB_STATUS_PAUSED = 3;
+  JOB_STATUS_CLOSED = 4;
+  JOB_STATUS_EXPIRED = 5;
+}
+
+enum SkillCategory {
+  SKILL_CATEGORY_UNSPECIFIED = 0;
+  SKILL_CATEGORY_PROGRAMMING_LANGUAGE = 1;
+  SKILL_CATEGORY_FRAMEWORK = 2;
+  SKILL_CATEGORY_DATABASE = 3;
+  SKILL_CATEGORY_CLOUD = 4;
+  SKILL_CATEGORY_DEVOPS = 5;
+  SKILL_CATEGORY_AI_ML = 6;
+  SKILL_CATEGORY_SOFT_SKILL = 7;
+  SKILL_CATEGORY_OTHER = 8;
+}
+
+// ============================================================================
+// Job Messages
+// ============================================================================
+
+message Job {
+  string id = 1;
+  string company_id = 2;
+  string title = 3;
+  string description = 4;
+  string requirements = 5;
+  JobType job_type = 6;
+  ExperienceLevel experience_level = 7;
+  int32 experience_min = 8;
+  int32 experience_max = 9;
+  int64 salary_min = 10;
+  int64 salary_max = 11;
+  string location = 12;
+  RemoteType remote_type = 13;
+  JobStatus status = 14;
+  int64 views_count = 15;
+  int64 applies_count = 16;
+  google.protobuf.Timestamp posted_at = 17;
+  google.protobuf.Timestamp expires_at = 18;
+  google.protobuf.Timestamp created_at = 19;
+  google.protobuf.Timestamp updated_at = 20;
+
+  // Related data
+  repeated JobSkill skills = 21;
+  string company_name = 22;       // Denormalized for display
+  string company_logo_url = 23;   // Denormalized for display
+}
+
+message SkillTag {
+  string id = 1;
+  string name = 2;
+  SkillCategory category = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message JobSkill {
+  string job_id = 1;
+  string skill_id = 2;
+  string skill_name = 3;
+  bool is_required = 4;
+}
+
+// ============================================================================
+// Request/Response Messages - Job
+// ============================================================================
+
+message CreateJobRequest {
+  string company_id = 1;
+  string title = 2;
+  string description = 3;
+  string requirements = 4;
+  JobType job_type = 5;
+  ExperienceLevel experience_level = 6;
+  int32 experience_min = 7;
+  int32 experience_max = 8;
+  int64 salary_min = 9;
+  int64 salary_max = 10;
+  string location = 11;
+  RemoteType remote_type = 12;
+  JobStatus status = 13;
+  google.protobuf.Timestamp expires_at = 14;
+  repeated JobSkillInput skills = 15;
+}
+
+message JobSkillInput {
+  string skill_id = 1;
+  bool is_required = 2;
+}
+
+message CreateJobResponse {
+  Job job = 1;
+}
+
+message GetJobRequest {
+  string id = 1;
+  bool increment_view = 2;  // Whether to increment view count
+}
+
+message GetJobResponse {
+  Job job = 1;
+}
+
+message UpdateJobRequest {
+  string id = 1;
+  optional string title = 2;
+  optional string description = 3;
+  optional string requirements = 4;
+  optional JobType job_type = 5;
+  optional ExperienceLevel experience_level = 6;
+  optional int32 experience_min = 7;
+  optional int32 experience_max = 8;
+  optional int64 salary_min = 9;
+  optional int64 salary_max = 10;
+  optional string location = 11;
+  optional RemoteType remote_type = 12;
+  optional JobStatus status = 13;
+  optional google.protobuf.Timestamp expires_at = 14;
+  repeated JobSkillInput skills = 15;
+  bool clear_skills = 16;  // Set to true to clear existing skills
+}
+
+message UpdateJobResponse {
+  Job job = 1;
+}
+
+message DeleteJobRequest {
+  string id = 1;
+}
+
+message DeleteJobResponse {
+  bool success = 1;
+}
+
+message ListJobsRequest {
+  hirehub.common.v1.PaginationRequest pagination = 1;
+
+  // Filters
+  optional string company_id = 2;
+  optional string title_contains = 3;
+  optional JobType job_type = 4;
+  optional ExperienceLevel experience_level = 5;
+  optional hirehub.common.v1.IntRange salary_range = 6;
+  optional string location = 7;
+  optional RemoteType remote_type = 8;
+  optional JobStatus status = 9;
+  repeated string skill_ids = 10;        // Filter by required skills
+  optional hirehub.common.v1.DateRange posted_date_range = 11;
+
+  // Sorting
+  hirehub.common.v1.SortOrder sort = 12;
+
+  // Include company info
+  bool include_company_info = 13;
+}
+
+message ListJobsResponse {
+  repeated Job jobs = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message SearchJobsRequest {
+  hirehub.common.v1.PaginationRequest pagination = 1;
+  string query = 2;                      // Full-text search query
+
+  // Filters (same as ListJobsRequest)
+  optional JobType job_type = 3;
+  optional ExperienceLevel experience_level = 4;
+  optional hirehub.common.v1.IntRange salary_range = 5;
+  optional string location = 6;
+  optional RemoteType remote_type = 7;
+  repeated string skill_ids = 8;
+
+  // Sorting
+  hirehub.common.v1.SortOrder sort = 9;
+}
+
+message SearchJobsResponse {
+  repeated Job jobs = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message GetJobsByCompanyRequest {
+  string company_id = 1;
+  hirehub.common.v1.PaginationRequest pagination = 2;
+  optional JobStatus status = 3;
+}
+
+message GetJobsByCompanyResponse {
+  repeated Job jobs = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message IncrementJobViewCountRequest {
+  string id = 1;
+}
+
+message IncrementJobViewCountResponse {
+  int64 views_count = 1;
+}
+
+message IncrementJobApplyCountRequest {
+  string id = 1;
+}
+
+message IncrementJobApplyCountResponse {
+  int64 applies_count = 1;
+}
+
+// ============================================================================
+// Request/Response Messages - SkillTag
+// ============================================================================
+
+message CreateSkillTagRequest {
+  string name = 1;
+  SkillCategory category = 2;
+}
+
+message CreateSkillTagResponse {
+  SkillTag skill_tag = 1;
+}
+
+message GetSkillTagRequest {
+  string id = 1;
+}
+
+message GetSkillTagResponse {
+  SkillTag skill_tag = 1;
+}
+
+message UpdateSkillTagRequest {
+  string id = 1;
+  optional string name = 2;
+  optional SkillCategory category = 3;
+}
+
+message UpdateSkillTagResponse {
+  SkillTag skill_tag = 1;
+}
+
+message DeleteSkillTagRequest {
+  string id = 1;
+}
+
+message DeleteSkillTagResponse {
+  bool success = 1;
+}
+
+message ListSkillTagsRequest {
+  hirehub.common.v1.PaginationRequest pagination = 1;
+  optional SkillCategory category = 2;
+  optional string name_contains = 3;
+}
+
+message ListSkillTagsResponse {
+  repeated SkillTag skill_tags = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message SearchSkillTagsRequest {
+  string query = 1;
+  int32 limit = 2;
+}
+
+message SearchSkillTagsResponse {
+  repeated SkillTag skill_tags = 1;
+}
+
+message BatchCreateSkillTagsRequest {
+  repeated CreateSkillTagRequest skill_tags = 1;
+}
+
+message BatchCreateSkillTagsResponse {
+  repeated SkillTag skill_tags = 1;
+  hirehub.common.v1.BatchResult result = 2;
+}
+
+// ============================================================================
+// Service Definition
+// ============================================================================
+
+service JobService {
+  // Job CRUD
+  rpc CreateJob(CreateJobRequest) returns (CreateJobResponse);
+  rpc GetJob(GetJobRequest) returns (GetJobResponse);
+  rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse);
+  rpc DeleteJob(DeleteJobRequest) returns (DeleteJobResponse);
+  rpc ListJobs(ListJobsRequest) returns (ListJobsResponse);
+  rpc SearchJobs(SearchJobsRequest) returns (SearchJobsResponse);
+  rpc GetJobsByCompany(GetJobsByCompanyRequest) returns (GetJobsByCompanyResponse);
+
+  // Job counters
+  rpc IncrementJobViewCount(IncrementJobViewCountRequest) returns (IncrementJobViewCountResponse);
+  rpc IncrementJobApplyCount(IncrementJobApplyCountRequest) returns (IncrementJobApplyCountResponse);
+
+  // SkillTag CRUD
+  rpc CreateSkillTag(CreateSkillTagRequest) returns (CreateSkillTagResponse);
+  rpc GetSkillTag(GetSkillTagRequest) returns (GetSkillTagResponse);
+  rpc UpdateSkillTag(UpdateSkillTagRequest) returns (UpdateSkillTagResponse);
+  rpc DeleteSkillTag(DeleteSkillTagRequest) returns (DeleteSkillTagResponse);
+  rpc ListSkillTags(ListSkillTagsRequest) returns (ListSkillTagsResponse);
+  rpc SearchSkillTags(SearchSkillTagsRequest) returns (SearchSkillTagsResponse);
+  rpc BatchCreateSkillTags(BatchCreateSkillTagsRequest) returns (BatchCreateSkillTagsResponse);
+}

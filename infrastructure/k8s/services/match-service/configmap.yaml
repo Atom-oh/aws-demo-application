@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: match-service-config
+  namespace: hirehub
+  labels:
+    app.kubernetes.io/name: match-service
+    app.kubernetes.io/component: backend
+data:
+  # Application configuration
+  APP_ENV: "production"
+  APP_PORT: "8000"
+  APP_HOST: "0.0.0.0"
+  APP_WORKERS: "4"
+
+  # Database configuration
+  DATABASE_NAME: "hirehub_match"
+  DATABASE_SSL_MODE: "require"
+  DATABASE_POOL_SIZE: "10"
+  DATABASE_MAX_OVERFLOW: "20"
+
+  # Redis configuration (score caching)
+  REDIS_DB: "1"
+  REDIS_POOL_SIZE: "10"
+  REDIS_CACHE_TTL: "3600"
+
+  # Service dependencies
+  AI_SERVICE_URL: "http://ai-service:8000"
+  JOB_SERVICE_ADDR: "job-service-headless:50052"
+  RESUME_SERVICE_URL: "http://resume-service:8000"
+
+  # Kafka configuration
+  KAFKA_CONSUMER_GROUP_ID: "match-service-group"
+  KAFKA_TOPIC_MATCH_CALCULATED: "match.calculated"
+  KAFKA_TOPIC_MATCH_RECOMMENDED: "match.recommended"
+
+  # Matching configuration
+  MATCH_SKILL_WEIGHT: "0.4"
+  MATCH_EXPERIENCE_WEIGHT: "0.35"
+  MATCH_CULTURE_WEIGHT: "0.25"
+  MATCH_SCORE_THRESHOLD: "60"
+  MATCH_TOP_RECOMMENDATIONS: "10"
+
+  # Logging
+  LOG_LEVEL: "INFO"
+  LOG_FORMAT: "json"
+
+  # Tracing
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability:4317"
+  OTEL_SERVICE_NAME: "match-service"

@@ -1,0 +1,436 @@
+syntax = "proto3";
+
+package hirehub.resume.v1;
+
+option go_package = "github.com/hirehub/proto/resume/v1;resumev1";
+option java_package = "com.hirehub.proto.resume.v1";
+option java_multiple_files = true;
+
+import "google/protobuf/timestamp.proto";
+import "common/v1/common.proto";
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum ResumeStatus {
+  RESUME_STATUS_UNSPECIFIED = 0;
+  RESUME_STATUS_PENDING = 1;      // 업로드 후 처리 대기
+  RESUME_STATUS_PROCESSING = 2;   // 파싱/PII 처리 중
+  RESUME_STATUS_ACTIVE = 3;       // 정상
+  RESUME_STATUS_FAILED = 4;       // 처리 실패
+  RESUME_STATUS_DELETED = 5;      // 삭제됨
+}
+
+enum FileType {
+  FILE_TYPE_UNSPECIFIED = 0;
+  FILE_TYPE_PDF = 1;
+  FILE_TYPE_DOCX = 2;
+  FILE_TYPE_DOC = 3;
+  FILE_TYPE_HWP = 4;
+  FILE_TYPE_TXT = 5;
+}
+
+enum SkillProficiency {
+  SKILL_PROFICIENCY_UNSPECIFIED = 0;
+  SKILL_PROFICIENCY_BEGINNER = 1;
+  SKILL_PROFICIENCY_INTERMEDIATE = 2;
+  SKILL_PROFICIENCY_ADVANCED = 3;
+  SKILL_PROFICIENCY_EXPERT = 4;
+}
+
+enum DegreeType {
+  DEGREE_TYPE_UNSPECIFIED = 0;
+  DEGREE_TYPE_HIGH_SCHOOL = 1;
+  DEGREE_TYPE_ASSOCIATE = 2;
+  DEGREE_TYPE_BACHELOR = 3;
+  DEGREE_TYPE_MASTER = 4;
+  DEGREE_TYPE_DOCTORATE = 5;
+  DEGREE_TYPE_OTHER = 6;
+}
+
+// ============================================================================
+// Resume Messages
+// ============================================================================
+
+message Resume {
+  string id = 1;
+  string user_id = 2;
+  string title = 3;
+  string original_file_url = 4;
+  string original_file_name = 5;
+  FileType file_type = 6;
+  string masked_content = 7;     // PII 제거된 내용
+  string parsed_content = 8;     // 파싱된 JSON 내용
+  string ai_summary = 9;         // AI 요약
+  bool is_primary = 10;
+  ResumeStatus status = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+
+  // Related data
+  repeated ResumeExperience experiences = 20;
+  repeated ResumeSkill skills = 21;
+  repeated ResumeEducation educations = 22;
+}
+
+message ResumeExperience {
+  string id = 1;
+  string resume_id = 2;
+  string company_name = 3;
+  string position = 4;
+  google.protobuf.Timestamp start_date = 5;
+  google.protobuf.Timestamp end_date = 6;
+  bool is_current = 7;
+  string description = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message ResumeSkill {
+  string id = 1;
+  string resume_id = 2;
+  string skill_name = 3;
+  SkillProficiency proficiency = 4;
+  int32 years = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message ResumeEducation {
+  string id = 1;
+  string resume_id = 2;
+  string school_name = 3;
+  DegreeType degree = 4;
+  string major = 5;
+  google.protobuf.Timestamp start_date = 6;
+  google.protobuf.Timestamp end_date = 7;
+  bool is_current = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// ============================================================================
+// Request/Response Messages - Resume
+// ============================================================================
+
+message CreateResumeRequest {
+  string user_id = 1;
+  string title = 2;
+  string original_file_url = 3;
+  string original_file_name = 4;
+  FileType file_type = 5;
+  bool is_primary = 6;
+}
+
+message CreateResumeResponse {
+  Resume resume = 1;
+}
+
+message GetResumeRequest {
+  string id = 1;
+  bool include_experiences = 2;
+  bool include_skills = 3;
+  bool include_educations = 4;
+}
+
+message GetResumeResponse {
+  Resume resume = 1;
+}
+
+message UpdateResumeRequest {
+  string id = 1;
+  optional string title = 2;
+  optional bool is_primary = 3;
+  optional ResumeStatus status = 4;
+}
+
+message UpdateResumeResponse {
+  Resume resume = 1;
+}
+
+message DeleteResumeRequest {
+  string id = 1;
+}
+
+message DeleteResumeResponse {
+  bool success = 1;
+}
+
+message ListResumesRequest {
+  hirehub.common.v1.PaginationRequest pagination = 1;
+  optional string user_id = 2;
+  optional ResumeStatus status = 3;
+  optional bool is_primary = 4;
+  hirehub.common.v1.SortOrder sort = 5;
+  bool include_details = 6;  // Include experiences, skills, educations
+}
+
+message ListResumesResponse {
+  repeated Resume resumes = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message GetResumesByUserIdRequest {
+  string user_id = 1;
+  bool include_details = 2;
+}
+
+message GetResumesByUserIdResponse {
+  repeated Resume resumes = 1;
+}
+
+message SetPrimaryResumeRequest {
+  string id = 1;
+  string user_id = 2;
+}
+
+message SetPrimaryResumeResponse {
+  Resume resume = 1;
+}
+
+// ============================================================================
+// Request/Response Messages - Resume Processing
+// ============================================================================
+
+message ProcessResumeRequest {
+  string id = 1;
+}
+
+message ProcessResumeResponse {
+  Resume resume = 1;
+  bool success = 2;
+  string error_message = 3;
+}
+
+message UpdateParsedContentRequest {
+  string id = 1;
+  string parsed_content = 2;
+  string masked_content = 3;
+  string ai_summary = 4;
+}
+
+message UpdateParsedContentResponse {
+  Resume resume = 1;
+}
+
+message GeneratePresignedUploadUrlRequest {
+  string user_id = 1;
+  string file_name = 2;
+  FileType file_type = 3;
+}
+
+message GeneratePresignedUploadUrlResponse {
+  string upload_url = 1;
+  string file_key = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+// ============================================================================
+// Request/Response Messages - ResumeExperience
+// ============================================================================
+
+message CreateResumeExperienceRequest {
+  string resume_id = 1;
+  string company_name = 2;
+  string position = 3;
+  google.protobuf.Timestamp start_date = 4;
+  google.protobuf.Timestamp end_date = 5;
+  bool is_current = 6;
+  string description = 7;
+}
+
+message CreateResumeExperienceResponse {
+  ResumeExperience experience = 1;
+}
+
+message UpdateResumeExperienceRequest {
+  string id = 1;
+  optional string company_name = 2;
+  optional string position = 3;
+  optional google.protobuf.Timestamp start_date = 4;
+  optional google.protobuf.Timestamp end_date = 5;
+  optional bool is_current = 6;
+  optional string description = 7;
+}
+
+message UpdateResumeExperienceResponse {
+  ResumeExperience experience = 1;
+}
+
+message DeleteResumeExperienceRequest {
+  string id = 1;
+}
+
+message DeleteResumeExperienceResponse {
+  bool success = 1;
+}
+
+message ListResumeExperiencesRequest {
+  string resume_id = 1;
+}
+
+message ListResumeExperiencesResponse {
+  repeated ResumeExperience experiences = 1;
+}
+
+message BatchCreateResumeExperiencesRequest {
+  string resume_id = 1;
+  repeated CreateResumeExperienceRequest experiences = 2;
+}
+
+message BatchCreateResumeExperiencesResponse {
+  repeated ResumeExperience experiences = 1;
+  hirehub.common.v1.BatchResult result = 2;
+}
+
+// ============================================================================
+// Request/Response Messages - ResumeSkill
+// ============================================================================
+
+message CreateResumeSkillRequest {
+  string resume_id = 1;
+  string skill_name = 2;
+  SkillProficiency proficiency = 3;
+  int32 years = 4;
+}
+
+message CreateResumeSkillResponse {
+  ResumeSkill skill = 1;
+}
+
+message UpdateResumeSkillRequest {
+  string id = 1;
+  optional string skill_name = 2;
+  optional SkillProficiency proficiency = 3;
+  optional int32 years = 4;
+}
+
+message UpdateResumeSkillResponse {
+  ResumeSkill skill = 1;
+}
+
+message DeleteResumeSkillRequest {
+  string id = 1;
+}
+
+message DeleteResumeSkillResponse {
+  bool success = 1;
+}
+
+message ListResumeSkillsRequest {
+  string resume_id = 1;
+}
+
+message ListResumeSkillsResponse {
+  repeated ResumeSkill skills = 1;
+}
+
+message BatchCreateResumeSkillsRequest {
+  string resume_id = 1;
+  repeated CreateResumeSkillRequest skills = 2;
+}
+
+message BatchCreateResumeSkillsResponse {
+  repeated ResumeSkill skills = 1;
+  hirehub.common.v1.BatchResult result = 2;
+}
+
+// ============================================================================
+// Request/Response Messages - ResumeEducation
+// ============================================================================
+
+message CreateResumeEducationRequest {
+  string resume_id = 1;
+  string school_name = 2;
+  DegreeType degree = 3;
+  string major = 4;
+  google.protobuf.Timestamp start_date = 5;
+  google.protobuf.Timestamp end_date = 6;
+  bool is_current = 7;
+}
+
+message CreateResumeEducationResponse {
+  ResumeEducation education = 1;
+}
+
+message UpdateResumeEducationRequest {
+  string id = 1;
+  optional string school_name = 2;
+  optional DegreeType degree = 3;
+  optional string major = 4;
+  optional google.protobuf.Timestamp start_date = 5;
+  optional google.protobuf.Timestamp end_date = 6;
+  optional bool is_current = 7;
+}
+
+message UpdateResumeEducationResponse {
+  ResumeEducation education = 1;
+}
+
+message DeleteResumeEducationRequest {
+  string id = 1;
+}
+
+message DeleteResumeEducationResponse {
+  bool success = 1;
+}
+
+message ListResumeEducationsRequest {
+  string resume_id = 1;
+}
+
+message ListResumeEducationsResponse {
+  repeated ResumeEducation educations = 1;
+}
+
+message BatchCreateResumeEducationsRequest {
+  string resume_id = 1;
+  repeated CreateResumeEducationRequest educations = 2;
+}
+
+message BatchCreateResumeEducationsResponse {
+  repeated ResumeEducation educations = 1;
+  hirehub.common.v1.BatchResult result = 2;
+}
+
+// ============================================================================
+// Service Definition
+// ============================================================================
+
+service ResumeService {
+  // Resume CRUD
+  rpc CreateResume(CreateResumeRequest) returns (CreateResumeResponse);
+  rpc GetResume(GetResumeRequest) returns (GetResumeResponse);
+  rpc UpdateResume(UpdateResumeRequest) returns (UpdateResumeResponse);
+  rpc DeleteResume(DeleteResumeRequest) returns (DeleteResumeResponse);
+  rpc ListResumes(ListResumesRequest) returns (ListResumesResponse);
+  rpc GetResumesByUserId(GetResumesByUserIdRequest) returns (GetResumesByUserIdResponse);
+  rpc SetPrimaryResume(SetPrimaryResumeRequest) returns (SetPrimaryResumeResponse);
+
+  // Resume processing
+  rpc ProcessResume(ProcessResumeRequest) returns (ProcessResumeResponse);
+  rpc UpdateParsedContent(UpdateParsedContentRequest) returns (UpdateParsedContentResponse);
+  rpc GeneratePresignedUploadUrl(GeneratePresignedUploadUrlRequest) returns (GeneratePresignedUploadUrlResponse);
+
+  // ResumeExperience CRUD
+  rpc CreateResumeExperience(CreateResumeExperienceRequest) returns (CreateResumeExperienceResponse);
+  rpc UpdateResumeExperience(UpdateResumeExperienceRequest) returns (UpdateResumeExperienceResponse);
+  rpc DeleteResumeExperience(DeleteResumeExperienceRequest) returns (DeleteResumeExperienceResponse);
+  rpc ListResumeExperiences(ListResumeExperiencesRequest) returns (ListResumeExperiencesResponse);
+  rpc BatchCreateResumeExperiences(BatchCreateResumeExperiencesRequest) returns (BatchCreateResumeExperiencesResponse);
+
+  // ResumeSkill CRUD
+  rpc CreateResumeSkill(CreateResumeSkillRequest) returns (CreateResumeSkillResponse);
+  rpc UpdateResumeSkill(UpdateResumeSkillRequest) returns (UpdateResumeSkillResponse);
+  rpc DeleteResumeSkill(DeleteResumeSkillRequest) returns (DeleteResumeSkillResponse);
+  rpc ListResumeSkills(ListResumeSkillsRequest) returns (ListResumeSkillsResponse);
+  rpc BatchCreateResumeSkills(BatchCreateResumeSkillsRequest) returns (BatchCreateResumeSkillsResponse);
+
+  // ResumeEducation CRUD
+  rpc CreateResumeEducation(CreateResumeEducationRequest) returns (CreateResumeEducationResponse);
+  rpc UpdateResumeEducation(UpdateResumeEducationRequest) returns (UpdateResumeEducationResponse);
+  rpc DeleteResumeEducation(DeleteResumeEducationRequest) returns (DeleteResumeEducationResponse);
+  rpc ListResumeEducations(ListResumeEducationsRequest) returns (ListResumeEducationsResponse);
+  rpc BatchCreateResumeEducations(BatchCreateResumeEducationsRequest) returns (BatchCreateResumeEducationsResponse);
+}

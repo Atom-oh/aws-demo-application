@@ -1,0 +1,17 @@
+apiVersion: v2
+name: resume-service
+description: HireHub Resume Service - Resume management and PII removal (Python/FastAPI/gRPC)
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - resume
+  - pii
+  - grpc
+  - python
+  - fastapi
+
+maintainers:
+  - name: HireHub Team
+    email: team@hirehub.io

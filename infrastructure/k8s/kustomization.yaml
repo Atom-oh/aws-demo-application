@@ -1,0 +1,30 @@
+# Root Kustomization
+# This file provides a base for all services without environment-specific configurations.
+# For deployment, use overlays/dev or overlays/prod instead.
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# This root kustomization aggregates all base resources.
+# Use overlays for environment-specific deployments:
+#   - kubectl apply -k overlays/dev     # Deploy to development
+#   - kubectl apply -k overlays/prod    # Deploy to production
+
+resources:
+  - base
+  - services/user-service
+  - services/job-service
+  - services/resume-service
+  - services/apply-service
+  - services/ai-service
+  - services/match-service
+  - services/notification-service
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/part-of: hirehub-platform
+
+# Common annotations
+commonAnnotations:
+  hirehub.io/version: "1.0.0"

@@ -1,0 +1,397 @@
+syntax = "proto3";
+
+package hirehub.user.v1;
+
+option go_package = "github.com/hirehub/proto/user/v1;userv1";
+option java_package = "com.hirehub.proto.user.v1";
+option java_multiple_files = true;
+
+import "google/protobuf/timestamp.proto";
+import "common/v1/common.proto";
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum UserType {
+  USER_TYPE_UNSPECIFIED = 0;
+  USER_TYPE_JOBSEEKER = 1;
+  USER_TYPE_COMPANY_MEMBER = 2;
+  USER_TYPE_ADMIN = 3;
+}
+
+enum UserStatus {
+  USER_STATUS_UNSPECIFIED = 0;
+  USER_STATUS_ACTIVE = 1;
+  USER_STATUS_INACTIVE = 2;
+  USER_STATUS_SUSPENDED = 3;
+  USER_STATUS_DELETED = 4;
+}
+
+enum CompanyStatus {
+  COMPANY_STATUS_UNSPECIFIED = 0;
+  COMPANY_STATUS_PENDING = 1;
+  COMPANY_STATUS_VERIFIED = 2;
+  COMPANY_STATUS_REJECTED = 3;
+  COMPANY_STATUS_SUSPENDED = 4;
+}
+
+enum CompanySize {
+  COMPANY_SIZE_UNSPECIFIED = 0;
+  COMPANY_SIZE_STARTUP = 1;      // 1-10
+  COMPANY_SIZE_SMALL = 2;        // 11-50
+  COMPANY_SIZE_MEDIUM = 3;       // 51-200
+  COMPANY_SIZE_LARGE = 4;        // 201-1000
+  COMPANY_SIZE_ENTERPRISE = 5;   // 1000+
+}
+
+// ============================================================================
+// User Messages
+// ============================================================================
+
+message User {
+  string id = 1;
+  string cognito_sub = 2;
+  string email = 3;
+  UserType user_type = 4;
+  UserStatus status = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+
+  // Optional profile data based on user_type
+  oneof profile {
+    JobseekerProfile jobseeker_profile = 10;
+    CompanyMember company_member = 11;
+  }
+}
+
+message JobseekerProfile {
+  string id = 1;
+  string user_id = 2;
+  string name = 3;
+  string phone = 4;
+  int32 experience_years = 5;
+  string desired_position = 6;
+  int64 desired_salary_min = 7;
+  int64 desired_salary_max = 8;
+  repeated string skills = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message Company {
+  string id = 1;
+  string name = 2;
+  string business_number = 3;
+  string industry = 4;
+  CompanySize company_size = 5;
+  string location = 6;
+  string logo_url = 7;
+  string description = 8;
+  CompanyStatus status = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message CompanyMember {
+  string id = 1;
+  string user_id = 2;
+  string company_id = 3;
+  string name = 4;
+  string position = 5;
+  bool is_primary = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+
+  // Optionally included company data
+  Company company = 10;
+}
+
+// ============================================================================
+// Request/Response Messages - User
+// ============================================================================
+
+message CreateUserRequest {
+  string cognito_sub = 1;
+  string email = 2;
+  UserType user_type = 3;
+}
+
+message CreateUserResponse {
+  User user = 1;
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message GetUserResponse {
+  User user = 1;
+}
+
+message GetUserByCognitoSubRequest {
+  string cognito_sub = 1;
+}
+
+message GetUserByEmailRequest {
+  string email = 1;
+}
+
+message UpdateUserRequest {
+  string id = 1;
+  optional UserStatus status = 2;
+}
+
+message UpdateUserResponse {
+  User user = 1;
+}
+
+message DeleteUserRequest {
+  string id = 1;
+}
+
+message DeleteUserResponse {
+  bool success = 1;
+}
+
+message ListUsersRequest {
+  hirehub.common.v1.PaginationRequest pagination = 1;
+  optional UserType user_type = 2;
+  optional UserStatus status = 3;
+  optional string email_contains = 4;
+  hirehub.common.v1.SortOrder sort = 5;
+}
+
+message ListUsersResponse {
+  repeated User users = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+// ============================================================================
+// Request/Response Messages - JobseekerProfile
+// ============================================================================
+
+message CreateJobseekerProfileRequest {
+  string user_id = 1;
+  string name = 2;
+  string phone = 3;
+  int32 experience_years = 4;
+  string desired_position = 5;
+  int64 desired_salary_min = 6;
+  int64 desired_salary_max = 7;
+  repeated string skills = 8;
+}
+
+message CreateJobseekerProfileResponse {
+  JobseekerProfile profile = 1;
+}
+
+message GetJobseekerProfileRequest {
+  string id = 1;
+}
+
+message GetJobseekerProfileByUserIdRequest {
+  string user_id = 1;
+}
+
+message GetJobseekerProfileResponse {
+  JobseekerProfile profile = 1;
+}
+
+message UpdateJobseekerProfileRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string phone = 3;
+  optional int32 experience_years = 4;
+  optional string desired_position = 5;
+  optional int64 desired_salary_min = 6;
+  optional int64 desired_salary_max = 7;
+  repeated string skills = 8;
+  bool clear_skills = 9;  // Set to true to clear skills
+}
+
+message UpdateJobseekerProfileResponse {
+  JobseekerProfile profile = 1;
+}
+
+message ListJobseekerProfilesRequest {
+  hirehub.common.v1.PaginationRequest pagination = 1;
+  repeated string skills = 2;
+  optional hirehub.common.v1.IntRange experience_years = 3;
+  optional string desired_position = 4;
+  hirehub.common.v1.SortOrder sort = 5;
+}
+
+message ListJobseekerProfilesResponse {
+  repeated JobseekerProfile profiles = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+// ============================================================================
+// Request/Response Messages - Company
+// ============================================================================
+
+message CreateCompanyRequest {
+  string name = 1;
+  string business_number = 2;
+  string industry = 3;
+  CompanySize company_size = 4;
+  string location = 5;
+  string logo_url = 6;
+  string description = 7;
+}
+
+message CreateCompanyResponse {
+  Company company = 1;
+}
+
+message GetCompanyRequest {
+  string id = 1;
+}
+
+message GetCompanyResponse {
+  Company company = 1;
+}
+
+message UpdateCompanyRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string industry = 3;
+  optional CompanySize company_size = 4;
+  optional string location = 5;
+  optional string logo_url = 6;
+  optional string description = 7;
+  optional CompanyStatus status = 8;
+}
+
+message UpdateCompanyResponse {
+  Company company = 1;
+}
+
+message DeleteCompanyRequest {
+  string id = 1;
+}
+
+message DeleteCompanyResponse {
+  bool success = 1;
+}
+
+message ListCompaniesRequest {
+  hirehub.common.v1.PaginationRequest pagination = 1;
+  optional string name_contains = 2;
+  optional string industry = 3;
+  optional CompanySize company_size = 4;
+  optional CompanyStatus status = 5;
+  hirehub.common.v1.SortOrder sort = 6;
+}
+
+message ListCompaniesResponse {
+  repeated Company companies = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message VerifyCompanyRequest {
+  string id = 1;
+  bool approved = 2;
+  string reason = 3;
+}
+
+message VerifyCompanyResponse {
+  Company company = 1;
+}
+
+// ============================================================================
+// Request/Response Messages - CompanyMember
+// ============================================================================
+
+message CreateCompanyMemberRequest {
+  string user_id = 1;
+  string company_id = 2;
+  string name = 3;
+  string position = 4;
+  bool is_primary = 5;
+}
+
+message CreateCompanyMemberResponse {
+  CompanyMember member = 1;
+}
+
+message GetCompanyMemberRequest {
+  string id = 1;
+}
+
+message GetCompanyMemberByUserIdRequest {
+  string user_id = 1;
+}
+
+message GetCompanyMemberResponse {
+  CompanyMember member = 1;
+}
+
+message UpdateCompanyMemberRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string position = 3;
+  optional bool is_primary = 4;
+}
+
+message UpdateCompanyMemberResponse {
+  CompanyMember member = 1;
+}
+
+message DeleteCompanyMemberRequest {
+  string id = 1;
+}
+
+message DeleteCompanyMemberResponse {
+  bool success = 1;
+}
+
+message ListCompanyMembersRequest {
+  hirehub.common.v1.PaginationRequest pagination = 1;
+  optional string company_id = 2;
+  optional bool is_primary = 3;
+}
+
+message ListCompanyMembersResponse {
+  repeated CompanyMember members = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+// ============================================================================
+// Service Definition
+// ============================================================================
+
+service UserService {
+  // User CRUD
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  rpc GetUserByCognitoSub(GetUserByCognitoSubRequest) returns (GetUserResponse);
+  rpc GetUserByEmail(GetUserByEmailRequest) returns (GetUserResponse);
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+
+  // JobseekerProfile CRUD
+  rpc CreateJobseekerProfile(CreateJobseekerProfileRequest) returns (CreateJobseekerProfileResponse);
+  rpc GetJobseekerProfile(GetJobseekerProfileRequest) returns (GetJobseekerProfileResponse);
+  rpc GetJobseekerProfileByUserId(GetJobseekerProfileByUserIdRequest) returns (GetJobseekerProfileResponse);
+  rpc UpdateJobseekerProfile(UpdateJobseekerProfileRequest) returns (UpdateJobseekerProfileResponse);
+  rpc ListJobseekerProfiles(ListJobseekerProfilesRequest) returns (ListJobseekerProfilesResponse);
+
+  // Company CRUD
+  rpc CreateCompany(CreateCompanyRequest) returns (CreateCompanyResponse);
+  rpc GetCompany(GetCompanyRequest) returns (GetCompanyResponse);
+  rpc UpdateCompany(UpdateCompanyRequest) returns (UpdateCompanyResponse);
+  rpc DeleteCompany(DeleteCompanyRequest) returns (DeleteCompanyResponse);
+  rpc ListCompanies(ListCompaniesRequest) returns (ListCompaniesResponse);
+  rpc VerifyCompany(VerifyCompanyRequest) returns (VerifyCompanyResponse);
+
+  // CompanyMember CRUD
+  rpc CreateCompanyMember(CreateCompanyMemberRequest) returns (CreateCompanyMemberResponse);
+  rpc GetCompanyMember(GetCompanyMemberRequest) returns (GetCompanyMemberResponse);
+  rpc GetCompanyMemberByUserId(GetCompanyMemberByUserIdRequest) returns (GetCompanyMemberResponse);
+  rpc UpdateCompanyMember(UpdateCompanyMemberRequest) returns (UpdateCompanyMemberResponse);
+  rpc DeleteCompanyMember(DeleteCompanyMemberRequest) returns (DeleteCompanyMemberResponse);
+  rpc ListCompanyMembers(ListCompanyMembersRequest) returns (ListCompanyMembersResponse);
+}

@@ -1,0 +1,458 @@
+syntax = "proto3";
+
+package hirehub.apply.v1;
+
+option go_package = "github.com/hirehub/proto/apply/v1;applyv1";
+option java_package = "com.hirehub.proto.apply.v1";
+option java_multiple_files = true;
+
+import "google/protobuf/timestamp.proto";
+import "common/v1/common.proto";
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum ApplicationStatus {
+  APPLICATION_STATUS_UNSPECIFIED = 0;
+  APPLICATION_STATUS_SUBMITTED = 1;     // 지원 완료
+  APPLICATION_STATUS_REVIEWING = 2;     // 서류 검토 중
+  APPLICATION_STATUS_SHORTLISTED = 3;   // 서류 합격
+  APPLICATION_STATUS_INTERVIEW = 4;     // 면접 진행 중
+  APPLICATION_STATUS_OFFERED = 5;       // 합격
+  APPLICATION_STATUS_REJECTED = 6;      // 불합격
+  APPLICATION_STATUS_WITHDRAWN = 7;     // 지원 취소
+  APPLICATION_STATUS_HIRED = 8;         // 입사 확정
+}
+
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_TYPE_SUBMITTED = 1;
+  EVENT_TYPE_STATUS_CHANGED = 2;
+  EVENT_TYPE_INTERVIEW_SCHEDULED = 3;
+  EVENT_TYPE_INTERVIEW_COMPLETED = 4;
+  EVENT_TYPE_INTERVIEW_CANCELLED = 5;
+  EVENT_TYPE_FEEDBACK_ADDED = 6;
+  EVENT_TYPE_OFFER_MADE = 7;
+  EVENT_TYPE_OFFER_ACCEPTED = 8;
+  EVENT_TYPE_OFFER_REJECTED = 9;
+  EVENT_TYPE_WITHDRAWN = 10;
+}
+
+enum ActorType {
+  ACTOR_TYPE_UNSPECIFIED = 0;
+  ACTOR_TYPE_SYSTEM = 1;
+  ACTOR_TYPE_JOBSEEKER = 2;
+  ACTOR_TYPE_COMPANY = 3;
+  ACTOR_TYPE_ADMIN = 4;
+}
+
+enum InterviewType {
+  INTERVIEW_TYPE_UNSPECIFIED = 0;
+  INTERVIEW_TYPE_PHONE = 1;
+  INTERVIEW_TYPE_VIDEO = 2;
+  INTERVIEW_TYPE_ONSITE = 3;
+  INTERVIEW_TYPE_TECHNICAL = 4;
+  INTERVIEW_TYPE_HR = 5;
+  INTERVIEW_TYPE_FINAL = 6;
+}
+
+enum InterviewStatus {
+  INTERVIEW_STATUS_UNSPECIFIED = 0;
+  INTERVIEW_STATUS_SCHEDULED = 1;
+  INTERVIEW_STATUS_CONFIRMED = 2;
+  INTERVIEW_STATUS_COMPLETED = 3;
+  INTERVIEW_STATUS_CANCELLED = 4;
+  INTERVIEW_STATUS_NO_SHOW = 5;
+  INTERVIEW_STATUS_RESCHEDULED = 6;
+}
+
+// ============================================================================
+// Application Messages
+// ============================================================================
+
+message Application {
+  string id = 1;
+  string job_id = 2;
+  string user_id = 3;
+  string resume_id = 4;
+  string cover_letter = 5;
+  ApplicationStatus status = 6;
+  double match_score = 7;
+  google.protobuf.Timestamp applied_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+
+  // Related data (optionally included)
+  string job_title = 10;
+  string company_name = 11;
+  string company_id = 12;
+  repeated Interview interviews = 13;
+  repeated ApplicationEvent events = 14;
+}
+
+message ApplicationEvent {
+  string id = 1;
+  string application_id = 2;
+  EventType event_type = 3;
+  ApplicationStatus from_status = 4;
+  ApplicationStatus to_status = 5;
+  string actor_id = 6;
+  ActorType actor_type = 7;
+  string payload = 8;  // JSON payload
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message Interview {
+  string id = 1;
+  string application_id = 2;
+  InterviewType interview_type = 3;
+  google.protobuf.Timestamp scheduled_at = 4;
+  int32 duration_minutes = 5;
+  string location = 6;          // Physical location or meeting URL
+  string meeting_url = 7;       // Video call URL if applicable
+  InterviewStatus status = 8;
+  string feedback = 9;
+  string interviewer_id = 10;
+  string interviewer_name = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+// ============================================================================
+// Request/Response Messages - Application
+// ============================================================================
+
+message CreateApplicationRequest {
+  string job_id = 1;
+  string user_id = 2;
+  string resume_id = 3;
+  string cover_letter = 4;
+}
+
+message CreateApplicationResponse {
+  Application application = 1;
+}
+
+message GetApplicationRequest {
+  string id = 1;
+  bool include_interviews = 2;
+  bool include_events = 3;
+}
+
+message GetApplicationResponse {
+  Application application = 1;
+}
+
+message UpdateApplicationRequest {
+  string id = 1;
+  optional string cover_letter = 2;
+  optional ApplicationStatus status = 3;
+  optional double match_score = 4;
+  optional string resume_id = 5;
+}
+
+message UpdateApplicationResponse {
+  Application application = 1;
+}
+
+message DeleteApplicationRequest {
+  string id = 1;
+}
+
+message DeleteApplicationResponse {
+  bool success = 1;
+}
+
+message ListApplicationsRequest {
+  hirehub.common.v1.PaginationRequest pagination = 1;
+
+  // Filters
+  optional string job_id = 2;
+  optional string user_id = 3;
+  optional string company_id = 4;
+  optional ApplicationStatus status = 5;
+  repeated ApplicationStatus statuses = 6;
+  optional hirehub.common.v1.DateRange applied_date_range = 7;
+  optional hirehub.common.v1.IntRange match_score_range = 8;
+
+  // Include related data
+  bool include_interviews = 9;
+  bool include_events = 10;
+
+  // Sorting
+  hirehub.common.v1.SortOrder sort = 11;
+}
+
+message ListApplicationsResponse {
+  repeated Application applications = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message GetApplicationsByJobRequest {
+  string job_id = 1;
+  hirehub.common.v1.PaginationRequest pagination = 2;
+  optional ApplicationStatus status = 3;
+  hirehub.common.v1.SortOrder sort = 4;
+}
+
+message GetApplicationsByJobResponse {
+  repeated Application applications = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message GetApplicationsByUserRequest {
+  string user_id = 1;
+  hirehub.common.v1.PaginationRequest pagination = 2;
+  optional ApplicationStatus status = 3;
+  hirehub.common.v1.SortOrder sort = 4;
+}
+
+message GetApplicationsByUserResponse {
+  repeated Application applications = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message CheckDuplicateApplicationRequest {
+  string job_id = 1;
+  string user_id = 2;
+}
+
+message CheckDuplicateApplicationResponse {
+  bool exists = 1;
+  string application_id = 2;
+}
+
+message WithdrawApplicationRequest {
+  string id = 1;
+  string user_id = 2;
+  string reason = 3;
+}
+
+message WithdrawApplicationResponse {
+  Application application = 1;
+}
+
+message UpdateApplicationStatusRequest {
+  string id = 1;
+  ApplicationStatus status = 2;
+  string actor_id = 3;
+  ActorType actor_type = 4;
+  string comment = 5;
+}
+
+message UpdateApplicationStatusResponse {
+  Application application = 1;
+  ApplicationEvent event = 2;
+}
+
+message BulkUpdateApplicationStatusRequest {
+  repeated string ids = 1;
+  ApplicationStatus status = 2;
+  string actor_id = 3;
+  ActorType actor_type = 4;
+  string comment = 5;
+}
+
+message BulkUpdateApplicationStatusResponse {
+  repeated Application applications = 1;
+  hirehub.common.v1.BatchResult result = 2;
+}
+
+// ============================================================================
+// Request/Response Messages - ApplicationEvent
+// ============================================================================
+
+message CreateApplicationEventRequest {
+  string application_id = 1;
+  EventType event_type = 2;
+  ApplicationStatus from_status = 3;
+  ApplicationStatus to_status = 4;
+  string actor_id = 5;
+  ActorType actor_type = 6;
+  string payload = 7;
+}
+
+message CreateApplicationEventResponse {
+  ApplicationEvent event = 1;
+}
+
+message ListApplicationEventsRequest {
+  string application_id = 1;
+  hirehub.common.v1.PaginationRequest pagination = 2;
+}
+
+message ListApplicationEventsResponse {
+  repeated ApplicationEvent events = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+// ============================================================================
+// Request/Response Messages - Interview
+// ============================================================================
+
+message CreateInterviewRequest {
+  string application_id = 1;
+  InterviewType interview_type = 2;
+  google.protobuf.Timestamp scheduled_at = 3;
+  int32 duration_minutes = 4;
+  string location = 5;
+  string meeting_url = 6;
+  string interviewer_id = 7;
+  string interviewer_name = 8;
+}
+
+message CreateInterviewResponse {
+  Interview interview = 1;
+}
+
+message GetInterviewRequest {
+  string id = 1;
+}
+
+message GetInterviewResponse {
+  Interview interview = 1;
+}
+
+message UpdateInterviewRequest {
+  string id = 1;
+  optional InterviewType interview_type = 2;
+  optional google.protobuf.Timestamp scheduled_at = 3;
+  optional int32 duration_minutes = 4;
+  optional string location = 5;
+  optional string meeting_url = 6;
+  optional InterviewStatus status = 7;
+  optional string feedback = 8;
+  optional string interviewer_id = 9;
+  optional string interviewer_name = 10;
+}
+
+message UpdateInterviewResponse {
+  Interview interview = 1;
+}
+
+message DeleteInterviewRequest {
+  string id = 1;
+}
+
+message DeleteInterviewResponse {
+  bool success = 1;
+}
+
+message ListInterviewsRequest {
+  hirehub.common.v1.PaginationRequest pagination = 1;
+  optional string application_id = 2;
+  optional InterviewStatus status = 3;
+  optional InterviewType interview_type = 4;
+  optional hirehub.common.v1.DateRange scheduled_date_range = 5;
+  optional string interviewer_id = 6;
+  hirehub.common.v1.SortOrder sort = 7;
+}
+
+message ListInterviewsResponse {
+  repeated Interview interviews = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message GetInterviewsByApplicationRequest {
+  string application_id = 1;
+}
+
+message GetInterviewsByApplicationResponse {
+  repeated Interview interviews = 1;
+}
+
+message RescheduleInterviewRequest {
+  string id = 1;
+  google.protobuf.Timestamp new_scheduled_at = 2;
+  int32 duration_minutes = 3;
+  string location = 4;
+  string meeting_url = 5;
+  string reason = 6;
+}
+
+message RescheduleInterviewResponse {
+  Interview interview = 1;
+}
+
+message CancelInterviewRequest {
+  string id = 1;
+  string reason = 2;
+  string cancelled_by = 3;
+  ActorType actor_type = 4;
+}
+
+message CancelInterviewResponse {
+  Interview interview = 1;
+}
+
+message CompleteInterviewRequest {
+  string id = 1;
+  string feedback = 2;
+  int32 rating = 3;  // 1-5 rating
+}
+
+message CompleteInterviewResponse {
+  Interview interview = 1;
+}
+
+// ============================================================================
+// Statistics
+// ============================================================================
+
+message GetApplicationStatsRequest {
+  optional string job_id = 1;
+  optional string company_id = 2;
+  optional string user_id = 3;
+  optional hirehub.common.v1.DateRange date_range = 4;
+}
+
+message GetApplicationStatsResponse {
+  int64 total_applications = 1;
+  map<string, int64> by_status = 2;     // Status name -> count
+  map<string, int64> by_source = 3;     // Source -> count
+  double average_match_score = 4;
+  int64 total_interviews = 5;
+  int64 total_offers = 6;
+  int64 total_hired = 7;
+}
+
+// ============================================================================
+// Service Definition
+// ============================================================================
+
+service ApplyService {
+  // Application CRUD
+  rpc CreateApplication(CreateApplicationRequest) returns (CreateApplicationResponse);
+  rpc GetApplication(GetApplicationRequest) returns (GetApplicationResponse);
+  rpc UpdateApplication(UpdateApplicationRequest) returns (UpdateApplicationResponse);
+  rpc DeleteApplication(DeleteApplicationRequest) returns (DeleteApplicationResponse);
+  rpc ListApplications(ListApplicationsRequest) returns (ListApplicationsResponse);
+  rpc GetApplicationsByJob(GetApplicationsByJobRequest) returns (GetApplicationsByJobResponse);
+  rpc GetApplicationsByUser(GetApplicationsByUserRequest) returns (GetApplicationsByUserResponse);
+
+  // Application actions
+  rpc CheckDuplicateApplication(CheckDuplicateApplicationRequest) returns (CheckDuplicateApplicationResponse);
+  rpc WithdrawApplication(WithdrawApplicationRequest) returns (WithdrawApplicationResponse);
+  rpc UpdateApplicationStatus(UpdateApplicationStatusRequest) returns (UpdateApplicationStatusResponse);
+  rpc BulkUpdateApplicationStatus(BulkUpdateApplicationStatusRequest) returns (BulkUpdateApplicationStatusResponse);
+
+  // Application events
+  rpc CreateApplicationEvent(CreateApplicationEventRequest) returns (CreateApplicationEventResponse);
+  rpc ListApplicationEvents(ListApplicationEventsRequest) returns (ListApplicationEventsResponse);
+
+  // Interview CRUD
+  rpc CreateInterview(CreateInterviewRequest) returns (CreateInterviewResponse);
+  rpc GetInterview(GetInterviewRequest) returns (GetInterviewResponse);
+  rpc UpdateInterview(UpdateInterviewRequest) returns (UpdateInterviewResponse);
+  rpc DeleteInterview(DeleteInterviewRequest) returns (DeleteInterviewResponse);
+  rpc ListInterviews(ListInterviewsRequest) returns (ListInterviewsResponse);
+  rpc GetInterviewsByApplication(GetInterviewsByApplicationRequest) returns (GetInterviewsByApplicationResponse);
+
+  // Interview actions
+  rpc RescheduleInterview(RescheduleInterviewRequest) returns (RescheduleInterviewResponse);
+  rpc CancelInterview(CancelInterviewRequest) returns (CancelInterviewResponse);
+  rpc CompleteInterview(CompleteInterviewRequest) returns (CompleteInterviewResponse);
+
+  // Statistics
+  rpc GetApplicationStats(GetApplicationStatsRequest) returns (GetApplicationStatsResponse);
+}

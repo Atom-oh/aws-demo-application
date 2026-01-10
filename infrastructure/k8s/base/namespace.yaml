@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hirehub
+  labels:
+    app.kubernetes.io/name: hirehub
+    app.kubernetes.io/part-of: hirehub-platform
+    environment: default
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: hirehub-quota
+  namespace: hirehub
+spec:
+  hard:
+    requests.cpu: "20"
+    requests.memory: 40Gi
+    limits.cpu: "40"
+    limits.memory: 80Gi
+    pods: "100"
+    services: "20"
+    configmaps: "50"
+    secrets: "50"
+    persistentvolumeclaims: "20"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: hirehub-limit-range
+  namespace: hirehub
+spec:
+  limits:
+    - default:
+        cpu: "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "100m"
+        memory: "128Mi"
+      type: Container

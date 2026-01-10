@@ -1,0 +1,24 @@
+{{- if .Values.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "apply-service.fullname" . }}-config
+  namespace: {{ include "apply-service.namespace" . }}
+  labels:
+    {{- include "apply-service.labels" . | nindent 4 }}
+data:
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  GRPC_PORT: {{ .Values.config.grpcPort | quote }}
+  METRICS_PORT: {{ .Values.config.metricsPort | quote }}
+  SERVICE_NAME: {{ include "apply-service.fullname" . | quote }}
+  {{- if .Values.global }}
+  {{- if .Values.global.grpc }}
+  {{- if .Values.global.grpc.mtls }}
+  GRPC_MTLS_ENABLED: {{ .Values.global.grpc.mtls.enabled | quote }}
+  {{- end }}
+  {{- end }}
+  {{- if .Values.global.region }}
+  AWS_REGION: {{ .Values.global.region | quote }}
+  {{- end }}
+  {{- end }}
+{{- end }}

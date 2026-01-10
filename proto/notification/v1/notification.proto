@@ -1,0 +1,413 @@
+syntax = "proto3";
+
+package hirehub.notification.v1;
+
+option go_package = "github.com/hirehub/proto/notification/v1;notificationv1";
+option java_package = "com.hirehub.proto.notification.v1";
+option java_multiple_files = true;
+
+import "google/protobuf/timestamp.proto";
+import "common/v1/common.proto";
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum NotificationChannel {
+  NOTIFICATION_CHANNEL_UNSPECIFIED = 0;
+  NOTIFICATION_CHANNEL_EMAIL = 1;
+  NOTIFICATION_CHANNEL_PUSH = 2;
+  NOTIFICATION_CHANNEL_SMS = 3;
+  NOTIFICATION_CHANNEL_IN_APP = 4;
+}
+
+enum NotificationStatus {
+  NOTIFICATION_STATUS_UNSPECIFIED = 0;
+  NOTIFICATION_STATUS_PENDING = 1;
+  NOTIFICATION_STATUS_SENT = 2;
+  NOTIFICATION_STATUS_DELIVERED = 3;
+  NOTIFICATION_STATUS_READ = 4;
+  NOTIFICATION_STATUS_FAILED = 5;
+}
+
+enum NotificationEventType {
+  NOTIFICATION_EVENT_TYPE_UNSPECIFIED = 0;
+  NOTIFICATION_EVENT_TYPE_APPLICATION_SUBMITTED = 1;
+  NOTIFICATION_EVENT_TYPE_APPLICATION_STATUS_CHANGED = 2;
+  NOTIFICATION_EVENT_TYPE_INTERVIEW_SCHEDULED = 3;
+  NOTIFICATION_EVENT_TYPE_INTERVIEW_REMINDER = 4;
+  NOTIFICATION_EVENT_TYPE_INTERVIEW_CANCELLED = 5;
+  NOTIFICATION_EVENT_TYPE_OFFER_RECEIVED = 6;
+  NOTIFICATION_EVENT_TYPE_NEW_MATCH = 7;
+  NOTIFICATION_EVENT_TYPE_NEW_APPLICANT = 8;
+  NOTIFICATION_EVENT_TYPE_JOB_EXPIRING = 9;
+  NOTIFICATION_EVENT_TYPE_RESUME_PROCESSED = 10;
+  NOTIFICATION_EVENT_TYPE_COMPANY_VERIFIED = 11;
+  NOTIFICATION_EVENT_TYPE_SYSTEM_ANNOUNCEMENT = 12;
+}
+
+enum DeviceType {
+  DEVICE_TYPE_UNSPECIFIED = 0;
+  DEVICE_TYPE_IOS = 1;
+  DEVICE_TYPE_ANDROID = 2;
+  DEVICE_TYPE_WEB = 3;
+}
+
+// ============================================================================
+// Notification Messages
+// ============================================================================
+
+message NotificationTemplate {
+  string id = 1;
+  string name = 2;
+  NotificationEventType event_type = 3;
+  NotificationChannel channel = 4;
+  string subject_template = 5;
+  string body_template = 6;
+  bool is_active = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message Notification {
+  string id = 1;
+  string user_id = 2;
+  string template_id = 3;
+  NotificationChannel channel = 4;
+  string title = 5;
+  string content = 6;
+  string data = 7;              // JSON payload for additional data
+  NotificationStatus status = 8;
+  google.protobuf.Timestamp sent_at = 9;
+  google.protobuf.Timestamp read_at = 10;
+  string error_message = 11;
+  google.protobuf.Timestamp created_at = 12;
+}
+
+message DeviceToken {
+  string id = 1;
+  string user_id = 2;
+  DeviceType device_type = 3;
+  string token = 4;
+  bool is_active = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message UserNotificationSettings {
+  string id = 1;
+  string user_id = 2;
+  bool email_enabled = 3;
+  bool push_enabled = 4;
+  bool sms_enabled = 5;
+  repeated NotificationEventType disabled_event_types = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// ============================================================================
+// Request/Response - NotificationTemplate
+// ============================================================================
+
+message CreateNotificationTemplateRequest {
+  string name = 1;
+  NotificationEventType event_type = 2;
+  NotificationChannel channel = 3;
+  string subject_template = 4;
+  string body_template = 5;
+  bool is_active = 6;
+}
+
+message CreateNotificationTemplateResponse {
+  NotificationTemplate template = 1;
+}
+
+message GetNotificationTemplateRequest {
+  string id = 1;
+}
+
+message GetNotificationTemplateResponse {
+  NotificationTemplate template = 1;
+}
+
+message UpdateNotificationTemplateRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string subject_template = 3;
+  optional string body_template = 4;
+  optional bool is_active = 5;
+}
+
+message UpdateNotificationTemplateResponse {
+  NotificationTemplate template = 1;
+}
+
+message DeleteNotificationTemplateRequest {
+  string id = 1;
+}
+
+message DeleteNotificationTemplateResponse {
+  bool success = 1;
+}
+
+message ListNotificationTemplatesRequest {
+  hirehub.common.v1.PaginationRequest pagination = 1;
+  optional NotificationEventType event_type = 2;
+  optional NotificationChannel channel = 3;
+  optional bool is_active = 4;
+}
+
+message ListNotificationTemplatesResponse {
+  repeated NotificationTemplate templates = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message GetTemplateByEventRequest {
+  NotificationEventType event_type = 1;
+  NotificationChannel channel = 2;
+}
+
+message GetTemplateByEventResponse {
+  NotificationTemplate template = 1;
+}
+
+// ============================================================================
+// Request/Response - Notification
+// ============================================================================
+
+message CreateNotificationRequest {
+  string user_id = 1;
+  string template_id = 2;
+  NotificationChannel channel = 3;
+  string title = 4;
+  string content = 5;
+  string data = 6;
+}
+
+message CreateNotificationResponse {
+  Notification notification = 1;
+}
+
+message GetNotificationRequest {
+  string id = 1;
+}
+
+message GetNotificationResponse {
+  Notification notification = 1;
+}
+
+message ListNotificationsRequest {
+  hirehub.common.v1.PaginationRequest pagination = 1;
+  optional string user_id = 2;
+  optional NotificationChannel channel = 3;
+  optional NotificationStatus status = 4;
+  optional hirehub.common.v1.DateRange date_range = 5;
+  hirehub.common.v1.SortOrder sort = 6;
+}
+
+message ListNotificationsResponse {
+  repeated Notification notifications = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message GetNotificationsByUserRequest {
+  string user_id = 1;
+  hirehub.common.v1.PaginationRequest pagination = 2;
+  optional NotificationStatus status = 3;
+  optional NotificationChannel channel = 4;
+}
+
+message GetNotificationsByUserResponse {
+  repeated Notification notifications = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+  int64 unread_count = 3;
+}
+
+message MarkNotificationReadRequest {
+  string id = 1;
+}
+
+message MarkNotificationReadResponse {
+  Notification notification = 1;
+}
+
+message MarkAllNotificationsReadRequest {
+  string user_id = 1;
+}
+
+message MarkAllNotificationsReadResponse {
+  int64 updated_count = 1;
+}
+
+message DeleteNotificationRequest {
+  string id = 1;
+}
+
+message DeleteNotificationResponse {
+  bool success = 1;
+}
+
+message GetUnreadCountRequest {
+  string user_id = 1;
+}
+
+message GetUnreadCountResponse {
+  int64 count = 1;
+}
+
+// ============================================================================
+// Request/Response - Send Notification
+// ============================================================================
+
+message SendNotificationRequest {
+  string user_id = 1;
+  NotificationEventType event_type = 2;
+  NotificationChannel channel = 3;
+  map<string, string> template_vars = 4;
+  string data = 5;
+}
+
+message SendNotificationResponse {
+  Notification notification = 1;
+  bool success = 2;
+  string error_message = 3;
+}
+
+message SendBulkNotificationRequest {
+  repeated string user_ids = 1;
+  NotificationEventType event_type = 2;
+  NotificationChannel channel = 3;
+  map<string, string> template_vars = 4;
+  string data = 5;
+}
+
+message SendBulkNotificationResponse {
+  repeated Notification notifications = 1;
+  hirehub.common.v1.BatchResult result = 2;
+}
+
+message SendMultiChannelNotificationRequest {
+  string user_id = 1;
+  NotificationEventType event_type = 2;
+  repeated NotificationChannel channels = 3;
+  map<string, string> template_vars = 4;
+  string data = 5;
+}
+
+message SendMultiChannelNotificationResponse {
+  repeated Notification notifications = 1;
+  map<string, bool> channel_success = 2;
+}
+
+// ============================================================================
+// Request/Response - DeviceToken
+// ============================================================================
+
+message RegisterDeviceTokenRequest {
+  string user_id = 1;
+  DeviceType device_type = 2;
+  string token = 3;
+}
+
+message RegisterDeviceTokenResponse {
+  DeviceToken device_token = 1;
+}
+
+message UnregisterDeviceTokenRequest {
+  string token = 1;
+}
+
+message UnregisterDeviceTokenResponse {
+  bool success = 1;
+}
+
+message GetDeviceTokensByUserRequest {
+  string user_id = 1;
+}
+
+message GetDeviceTokensByUserResponse {
+  repeated DeviceToken device_tokens = 1;
+}
+
+message DeactivateDeviceTokenRequest {
+  string id = 1;
+}
+
+message DeactivateDeviceTokenResponse {
+  bool success = 1;
+}
+
+// ============================================================================
+// Request/Response - UserNotificationSettings
+// ============================================================================
+
+message GetUserNotificationSettingsRequest {
+  string user_id = 1;
+}
+
+message GetUserNotificationSettingsResponse {
+  UserNotificationSettings settings = 1;
+}
+
+message UpdateUserNotificationSettingsRequest {
+  string user_id = 1;
+  optional bool email_enabled = 2;
+  optional bool push_enabled = 3;
+  optional bool sms_enabled = 4;
+  repeated NotificationEventType disabled_event_types = 5;
+  bool clear_disabled_event_types = 6;
+}
+
+message UpdateUserNotificationSettingsResponse {
+  UserNotificationSettings settings = 1;
+}
+
+message CheckNotificationEnabledRequest {
+  string user_id = 1;
+  NotificationEventType event_type = 2;
+  NotificationChannel channel = 3;
+}
+
+message CheckNotificationEnabledResponse {
+  bool enabled = 1;
+}
+
+// ============================================================================
+// Service Definition
+// ============================================================================
+
+service NotificationService {
+  // Template CRUD
+  rpc CreateNotificationTemplate(CreateNotificationTemplateRequest) returns (CreateNotificationTemplateResponse);
+  rpc GetNotificationTemplate(GetNotificationTemplateRequest) returns (GetNotificationTemplateResponse);
+  rpc UpdateNotificationTemplate(UpdateNotificationTemplateRequest) returns (UpdateNotificationTemplateResponse);
+  rpc DeleteNotificationTemplate(DeleteNotificationTemplateRequest) returns (DeleteNotificationTemplateResponse);
+  rpc ListNotificationTemplates(ListNotificationTemplatesRequest) returns (ListNotificationTemplatesResponse);
+  rpc GetTemplateByEvent(GetTemplateByEventRequest) returns (GetTemplateByEventResponse);
+
+  // Notification CRUD
+  rpc CreateNotification(CreateNotificationRequest) returns (CreateNotificationResponse);
+  rpc GetNotification(GetNotificationRequest) returns (GetNotificationResponse);
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
+  rpc GetNotificationsByUser(GetNotificationsByUserRequest) returns (GetNotificationsByUserResponse);
+  rpc MarkNotificationRead(MarkNotificationReadRequest) returns (MarkNotificationReadResponse);
+  rpc MarkAllNotificationsRead(MarkAllNotificationsReadRequest) returns (MarkAllNotificationsReadResponse);
+  rpc DeleteNotification(DeleteNotificationRequest) returns (DeleteNotificationResponse);
+  rpc GetUnreadCount(GetUnreadCountRequest) returns (GetUnreadCountResponse);
+
+  // Send notifications
+  rpc SendNotification(SendNotificationRequest) returns (SendNotificationResponse);
+  rpc SendBulkNotification(SendBulkNotificationRequest) returns (SendBulkNotificationResponse);
+  rpc SendMultiChannelNotification(SendMultiChannelNotificationRequest) returns (SendMultiChannelNotificationResponse);
+
+  // Device tokens
+  rpc RegisterDeviceToken(RegisterDeviceTokenRequest) returns (RegisterDeviceTokenResponse);
+  rpc UnregisterDeviceToken(UnregisterDeviceTokenRequest) returns (UnregisterDeviceTokenResponse);
+  rpc GetDeviceTokensByUser(GetDeviceTokensByUserRequest) returns (GetDeviceTokensByUserResponse);
+  rpc DeactivateDeviceToken(DeactivateDeviceTokenRequest) returns (DeactivateDeviceTokenResponse);
+
+  // User settings
+  rpc GetUserNotificationSettings(GetUserNotificationSettingsRequest) returns (GetUserNotificationSettingsResponse);
+  rpc UpdateUserNotificationSettings(UpdateUserNotificationSettingsRequest) returns (UpdateUserNotificationSettingsResponse);
+  rpc CheckNotificationEnabled(CheckNotificationEnabledRequest) returns (CheckNotificationEnabledResponse);
+}

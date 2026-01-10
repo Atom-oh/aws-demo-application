@@ -1,0 +1,40 @@
+apiVersion: v2
+name: hirehub
+description: HireHub - AI-powered recruitment platform on AWS cloud-native infrastructure
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - recruitment
+  - ai
+  - microservices
+  - aws
+  - grpc
+
+maintainers:
+  - name: HireHub Team
+    email: team@hirehub.io
+
+dependencies:
+  - name: user-service
+    version: 1.0.0
+    condition: user-service.enabled
+  - name: job-service
+    version: 1.0.0
+    condition: job-service.enabled
+  - name: resume-service
+    version: 1.0.0
+    condition: resume-service.enabled
+  - name: apply-service
+    version: 1.0.0
+    condition: apply-service.enabled
+  - name: ai-service
+    version: 1.0.0
+    condition: ai-service.enabled
+  - name: match-service
+    version: 1.0.0
+    condition: match-service.enabled
+  - name: notification-service
+    version: 1.0.0
+    condition: notification-service.enabled

@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package hirehub.common.v1;
+
+option go_package = "github.com/hirehub/proto/common/v1;commonv1";
+option java_package = "com.hirehub.proto.common.v1";
+option java_multiple_files = true;
+
+import "google/protobuf/timestamp.proto";
+
+// Empty message for requests/responses that don't need data
+message Empty {}
+
+// Pagination request parameters
+message PaginationRequest {
+  int32 page = 1;       // Page number (1-based)
+  int32 page_size = 2;  // Number of items per page
+}
+
+// Pagination response metadata
+message PaginationResponse {
+  int32 page = 1;         // Current page number
+  int32 page_size = 2;    // Number of items per page
+  int64 total = 3;        // Total number of items
+  int32 total_pages = 4;  // Total number of pages
+}
+
+// Sort order for list queries
+message SortOrder {
+  string field = 1;           // Field name to sort by
+  SortDirection direction = 2; // Sort direction
+}
+
+enum SortDirection {
+  SORT_DIRECTION_UNSPECIFIED = 0;
+  SORT_DIRECTION_ASC = 1;
+  SORT_DIRECTION_DESC = 2;
+}
+
+// Date range filter
+message DateRange {
+  google.protobuf.Timestamp start = 1;
+  google.protobuf.Timestamp end = 2;
+}
+
+// Integer range filter
+message IntRange {
+  int32 min = 1;
+  int32 max = 2;
+}
+
+// Common response wrapper with status
+message ResponseStatus {
+  bool success = 1;
+  string message = 2;
+  string error_code = 3;
+}
+
+// Resource identifier
+message ResourceId {
+  string id = 1;
+}
+
+// Batch operation result
+message BatchResult {
+  int32 total = 1;
+  int32 succeeded = 2;
+  int32 failed = 3;
+  repeated string failed_ids = 4;
+  repeated string error_messages = 5;
+}

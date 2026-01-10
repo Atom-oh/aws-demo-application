@@ -1,0 +1,366 @@
+# HireHub Docker Compose - Local Development Environment
+# Usage: docker-compose up -d
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # Infrastructure Services
+  # =============================================================================
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: hirehub-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hirehub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hirehub_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-hirehub}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hirehub"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hirehub-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: hirehub-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hirehub-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: hirehub-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
+    networks:
+      - hirehub-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: hirehub-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - hirehub-network
+
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: hirehub-opensearch
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - plugins.security.disabled=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200 | grep -q 'opensearch'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - hirehub-network
+
+  # =============================================================================
+  # Application Services
+  # =============================================================================
+
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    container_name: hirehub-user-service
+    ports:
+      - "8001:8001"
+      - "9001:9001"
+    environment:
+      - APP_ENV=development
+      - HTTP_PORT=8001
+      - GRPC_PORT=9001
+      - DATABASE_URL=postgres://hirehub:hirehub_dev@postgres:5432/hirehub_users?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
+      - KAFKA_BROKERS=kafka:29092
+      - COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID:-}
+      - COGNITO_CLIENT_ID=${COGNITO_CLIENT_ID:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - hirehub-network
+
+  job-service:
+    build:
+      context: ./services/job-service
+      dockerfile: Dockerfile
+    container_name: hirehub-job-service
+    ports:
+      - "8002:8002"
+      - "9002:9002"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SERVER_PORT=8002
+      - GRPC_PORT=9002
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/hirehub_jobs
+      - SPRING_DATASOURCE_USERNAME=hirehub
+      - SPRING_DATASOURCE_PASSWORD=hirehub_dev
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - hirehub-network
+
+  resume-service:
+    build:
+      context: ./services/resume-service
+      dockerfile: Dockerfile
+    container_name: hirehub-resume-service
+    ports:
+      - "8003:8003"
+      - "9003:9003"
+    environment:
+      - APP_ENV=development
+      - HTTP_PORT=8003
+      - GRPC_PORT=9003
+      - DATABASE_URL=postgresql://hirehub:hirehub_dev@postgres:5432/hirehub_resumes
+      - REDIS_URL=redis://redis:6379/1
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - S3_BUCKET=${S3_BUCKET:-hirehub-resumes-dev}
+      - AWS_REGION=${AWS_REGION:-ap-northeast-2}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - hirehub-network
+
+  apply-service:
+    build:
+      context: ./services/apply-service
+      dockerfile: Dockerfile
+    container_name: hirehub-apply-service
+    ports:
+      - "8004:8004"
+      - "9004:9004"
+    environment:
+      - APP_ENV=development
+      - HTTP_PORT=8004
+      - GRPC_PORT=9004
+      - DATABASE_URL=postgres://hirehub:hirehub_dev@postgres:5432/hirehub_applies?sslmode=disable
+      - REDIS_URL=redis://redis:6379/2
+      - KAFKA_BROKERS=kafka:29092
+      - USER_SERVICE_ADDR=user-service:9001
+      - JOB_SERVICE_ADDR=job-service:9002
+      - RESUME_SERVICE_ADDR=resume-service:9003
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - hirehub-network
+
+  match-service:
+    build:
+      context: ./services/match-service
+      dockerfile: Dockerfile
+    container_name: hirehub-match-service
+    ports:
+      - "8005:8005"
+      - "9005:9005"
+    environment:
+      - APP_ENV=development
+      - HTTP_PORT=8005
+      - GRPC_PORT=9005
+      - DATABASE_URL=postgresql://hirehub:hirehub_dev@postgres:5432/hirehub_matches
+      - REDIS_URL=redis://redis:6379/3
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+      - AI_SERVICE_ADDR=ai-service:9006
+      - JOB_SERVICE_ADDR=job-service:9002
+      - RESUME_SERVICE_ADDR=resume-service:9003
+    depends_on:
+      postgres:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - hirehub-network
+
+  ai-service:
+    build:
+      context: ./services/ai-service
+      dockerfile: Dockerfile
+    container_name: hirehub-ai-service
+    ports:
+      - "8006:8006"
+      - "9006:9006"
+    environment:
+      - APP_ENV=development
+      - HTTP_PORT=8006
+      - GRPC_PORT=9006
+      - REDIS_URL=redis://redis:6379/4
+      - AWS_REGION=${AWS_REGION:-ap-northeast-2}
+      - BEDROCK_MODEL_ID=${BEDROCK_MODEL_ID:-anthropic.claude-3-sonnet-20240229-v1:0}
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+    depends_on:
+      redis:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - hirehub-network
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: hirehub-notification-service
+    ports:
+      - "8007:8007"
+      - "9007:9007"
+    environment:
+      - APP_ENV=development
+      - HTTP_PORT=8007
+      - GRPC_PORT=9007
+      - DATABASE_URL=postgres://hirehub:hirehub_dev@postgres:5432/hirehub_notifications?sslmode=disable
+      - REDIS_URL=redis://redis:6379/5
+      - KAFKA_BROKERS=kafka:29092
+      - KAFKA_GROUP_ID=notification-service
+      - SES_SENDER_EMAIL=${SES_SENDER_EMAIL:-noreply@hirehub.example.com}
+      - AWS_REGION=${AWS_REGION:-ap-northeast-2}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - hirehub-network
+
+# =============================================================================
+# Networks
+# =============================================================================
+
+networks:
+  hirehub-network:
+    driver: bridge
+    name: hirehub-network
+
+# =============================================================================
+# Volumes
+# =============================================================================
+
+volumes:
+  postgres_data:
+    name: hirehub-postgres-data
+  redis_data:
+    name: hirehub-redis-data
+  zookeeper_data:
+    name: hirehub-zookeeper-data
+  zookeeper_log:
+    name: hirehub-zookeeper-log
+  kafka_data:
+    name: hirehub-kafka-data
+  opensearch_data:
+    name: hirehub-opensearch-data

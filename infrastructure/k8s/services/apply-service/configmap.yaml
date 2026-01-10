@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apply-service-config
+  namespace: hirehub
+  labels:
+    app.kubernetes.io/name: apply-service
+    app.kubernetes.io/component: backend
+data:
+  # Server configuration
+  APP_ENV: "production"
+  GRPC_PORT: "50053"
+  HTTP_PORT: "8004"
+  METRICS_PORT: "9090"
+
+  # Database configuration
+  DB_NAME: "hirehub_apply"
+  DB_SSLMODE: "require"
+  DB_MAX_OPEN_CONNS: "25"
+  DB_MAX_IDLE_CONNS: "10"
+  DB_CONN_MAX_LIFETIME: "5m"
+
+  # Service dependencies
+  USER_SERVICE_ADDR: "user-service-headless:50051"
+  JOB_SERVICE_ADDR: "job-service-headless:50052"
+  RESUME_SERVICE_URL: "http://resume-service:8000"
+  MATCH_SERVICE_URL: "http://match-service:8000"
+
+  # Kafka configuration
+  KAFKA_CONSUMER_GROUP_ID: "apply-service-group"
+  KAFKA_TOPIC_APPLICATION_SUBMITTED: "application.submitted"
+  KAFKA_TOPIC_APPLICATION_STATUS_CHANGED: "application.status_changed"
+  KAFKA_TOPIC_INTERVIEW_SCHEDULED: "interview.scheduled"
+
+  # Logging
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+
+  # Tracing
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability:4317"
+  OTEL_SERVICE_NAME: "apply-service"
+
+  # gRPC settings
+  GRPC_MAX_RECV_MSG_SIZE: "4194304"
+  GRPC_MAX_SEND_MSG_SIZE: "4194304"

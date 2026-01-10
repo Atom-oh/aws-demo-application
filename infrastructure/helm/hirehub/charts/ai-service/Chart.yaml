@@ -1,0 +1,18 @@
+apiVersion: v2
+name: ai-service
+description: HireHub AI Service - AgentCore, RAG, sLLM integration (Python/FastAPI)
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - ai
+  - bedrock
+  - rag
+  - llm
+  - python
+  - fastapi
+
+maintainers:
+  - name: HireHub Team
+    email: team@hirehub.io

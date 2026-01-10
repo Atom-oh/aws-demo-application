@@ -1,0 +1,84 @@
+{
+  "companies": [
+    {
+      "name": "테크스타트 주식회사",
+      "business_number": "123-45-67890",
+      "industry": "IT/소프트웨어",
+      "company_size": "51-200",
+      "location": "서울특별시 강남구 테헤란로 123",
+      "description": "AI 기반 B2B SaaS 솔루션을 개발하는 기술 스타트업입니다. 데이터 분석과 자동화 서비스를 제공합니다."
+    },
+    {
+      "name": "클라우드나인 코리아",
+      "business_number": "234-56-78901",
+      "industry": "클라우드/인프라",
+      "company_size": "201-500",
+      "location": "서울특별시 서초구 반포대로 45",
+      "description": "국내 선도적인 클라우드 인프라 서비스 기업으로, MSP 및 클라우드 컨설팅 서비스를 제공합니다."
+    },
+    {
+      "name": "핀테크허브",
+      "business_number": "345-67-89012",
+      "industry": "금융/핀테크",
+      "company_size": "11-50",
+      "location": "서울특별시 영등포구 여의도동 789",
+      "description": "혁신적인 디지털 결제 솔루션과 블록체인 기반 금융 서비스를 개발하는 핀테크 스타트업입니다."
+    },
+    {
+      "name": "그린에너지테크",
+      "business_number": "456-78-90123",
+      "industry": "에너지/환경",
+      "company_size": "51-200",
+      "location": "경기도 성남시 분당구 판교로 256",
+      "description": "친환경 에너지 관리 시스템과 스마트 그리드 솔루션을 개발하는 그린테크 기업입니다."
+    },
+    {
+      "name": "헬스케어AI",
+      "business_number": "567-89-01234",
+      "industry": "헬스케어/바이오",
+      "company_size": "11-50",
+      "location": "서울특별시 송파구 올림픽로 300",
+      "description": "AI 기반 의료 영상 분석 및 디지털 헬스케어 솔루션을 개발하는 바이오 스타트업입니다."
+    },
+    {
+      "name": "이커머스플러스",
+      "business_number": "678-90-12345",
+      "industry": "이커머스/유통",
+      "company_size": "201-500",
+      "location": "서울특별시 성동구 왕십리로 410",
+      "description": "D2C 브랜드를 위한 통합 이커머스 플랫폼을 운영하는 유통 테크 기업입니다."
+    },
+    {
+      "name": "모빌리티원",
+      "business_number": "789-01-23456",
+      "industry": "모빌리티/물류",
+      "company_size": "51-200",
+      "location": "경기도 수원시 영통구 삼성로 129",
+      "description": "자율주행 기술과 스마트 물류 솔루션을 개발하는 모빌리티 기업입니다."
+    },
+    {
+      "name": "에듀테크코리아",
+      "business_number": "890-12-34567",
+      "industry": "교육/에듀테크",
+      "company_size": "11-50",
+      "location": "서울특별시 마포구 월드컵북로 396",
+      "description": "AI 기반 맞춤형 학습 플랫폼과 교육 콘텐츠를 제공하는 에듀테크 스타트업입니다."
+    },
+    {
+      "name": "게임스튜디오X",
+      "business_number": "901-23-45678",
+      "industry": "게임/엔터테인먼트",
+      "company_size": "51-200",
+      "location": "경기도 성남시 분당구 대왕판교로 660",
+      "description": "글로벌 히트 모바일 게임을 개발하는 게임 스튜디오입니다."
+    },
+    {
+      "name": "시큐리티랩스",
+      "business_number": "012-34-56789",
+      "industry": "보안/사이버보안",
+      "company_size": "11-50",
+      "location": "서울특별시 강남구 역삼동 823",
+      "description": "기업용 사이버 보안 솔루션과 취약점 분석 서비스를 제공하는 보안 전문 기업입니다."
+    }
+  ]
+}

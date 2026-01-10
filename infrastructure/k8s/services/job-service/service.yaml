@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: job-service
+  namespace: hirehub
+  labels:
+    app.kubernetes.io/name: job-service
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: job-service
+  ports:
+    - name: grpc
+      port: 50052
+      targetPort: grpc
+      protocol: TCP
+    - name: http
+      port: 8002
+      targetPort: http
+      protocol: TCP
+    - name: management
+      port: 9002
+      targetPort: management
+      protocol: TCP
+---
+# Headless service for gRPC load balancing
+apiVersion: v1
+kind: Service
+metadata:
+  name: job-service-headless
+  namespace: hirehub
+  labels:
+    app.kubernetes.io/name: job-service
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: job-service
+  ports:
+    - name: grpc
+      port: 50052
+      targetPort: grpc
+      protocol: TCP

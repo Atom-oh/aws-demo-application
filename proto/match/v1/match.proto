@@ -1,0 +1,368 @@
+syntax = "proto3";
+
+package hirehub.match.v1;
+
+option go_package = "github.com/hirehub/proto/match/v1;matchv1";
+option java_package = "com.hirehub.proto.match.v1";
+option java_multiple_files = true;
+
+import "google/protobuf/timestamp.proto";
+import "common/v1/common.proto";
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum FeedbackType {
+  FEEDBACK_TYPE_UNSPECIFIED = 0;
+  FEEDBACK_TYPE_POSITIVE = 1;     // 유용한 매칭
+  FEEDBACK_TYPE_NEGATIVE = 2;     // 부적절한 매칭
+  FEEDBACK_TYPE_HIRED = 3;        // 실제 채용됨
+  FEEDBACK_TYPE_NOT_FIT = 4;      // 적합하지 않음
+  FEEDBACK_TYPE_APPLIED = 5;      // 지원 진행
+  FEEDBACK_TYPE_SAVED = 6;        // 관심 등록
+}
+
+enum MatchStatus {
+  MATCH_STATUS_UNSPECIFIED = 0;
+  MATCH_STATUS_PENDING = 1;       // 계산 대기
+  MATCH_STATUS_PROCESSING = 2;    // 계산 중
+  MATCH_STATUS_COMPLETED = 3;     // 계산 완료
+  MATCH_STATUS_FAILED = 4;        // 계산 실패
+}
+
+// ============================================================================
+// Match Messages
+// ============================================================================
+
+message Match {
+  string id = 1;
+  string job_id = 2;
+  string resume_id = 3;
+  string user_id = 4;
+  double overall_score = 5;       // 0-100
+  double skill_score = 6;         // 0-100
+  double experience_score = 7;    // 0-100
+  double culture_score = 8;       // 0-100
+  ScoreBreakdown score_breakdown = 9;
+  string ai_reasoning = 10;       // AI 매칭 설명
+  bool is_recommended = 11;
+  MatchStatus status = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+
+  // Related data (optionally included)
+  string job_title = 15;
+  string company_name = 16;
+  string resume_title = 17;
+  string user_name = 18;
+}
+
+message ScoreBreakdown {
+  // Skill matching details
+  repeated SkillMatch skill_matches = 1;
+  double skill_coverage = 2;          // % of required skills matched
+
+  // Experience matching details
+  int32 required_experience_years = 3;
+  int32 candidate_experience_years = 4;
+  bool experience_meets_requirement = 5;
+
+  // Additional factors
+  double location_score = 6;
+  double salary_fit_score = 7;
+  double job_type_score = 8;
+
+  // Strengths and gaps
+  repeated string strengths = 9;
+  repeated string gaps = 10;
+}
+
+message SkillMatch {
+  string skill_name = 1;
+  bool required = 2;
+  bool matched = 3;
+  double proficiency_score = 4;   // How well candidate's proficiency matches
+  int32 candidate_years = 5;
+}
+
+message MatchFeedback {
+  string id = 1;
+  string match_id = 2;
+  FeedbackType feedback_type = 3;
+  string feedback_by = 4;         // User ID who gave feedback
+  string comment = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+// ============================================================================
+// Request/Response Messages - Match
+// ============================================================================
+
+message CreateMatchRequest {
+  string job_id = 1;
+  string resume_id = 2;
+  string user_id = 3;
+}
+
+message CreateMatchResponse {
+  Match match = 1;
+}
+
+message GetMatchRequest {
+  string id = 1;
+}
+
+message GetMatchResponse {
+  Match match = 1;
+}
+
+message DeleteMatchRequest {
+  string id = 1;
+}
+
+message DeleteMatchResponse {
+  bool success = 1;
+}
+
+message ListMatchesRequest {
+  hirehub.common.v1.PaginationRequest pagination = 1;
+
+  // Filters
+  optional string job_id = 2;
+  optional string resume_id = 3;
+  optional string user_id = 4;
+  optional hirehub.common.v1.IntRange overall_score_range = 5;
+  optional bool is_recommended = 6;
+  optional MatchStatus status = 7;
+
+  // Sorting
+  hirehub.common.v1.SortOrder sort = 8;
+}
+
+message ListMatchesResponse {
+  repeated Match matches = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message GetMatchesByJobRequest {
+  string job_id = 1;
+  hirehub.common.v1.PaginationRequest pagination = 2;
+  optional double min_score = 3;
+  bool only_recommended = 4;
+  hirehub.common.v1.SortOrder sort = 5;
+}
+
+message GetMatchesByJobResponse {
+  repeated Match matches = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message GetMatchesByUserRequest {
+  string user_id = 1;
+  hirehub.common.v1.PaginationRequest pagination = 2;
+  optional double min_score = 3;
+  bool only_recommended = 4;
+  hirehub.common.v1.SortOrder sort = 5;
+}
+
+message GetMatchesByUserResponse {
+  repeated Match matches = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message GetMatchesByResumeRequest {
+  string resume_id = 1;
+  hirehub.common.v1.PaginationRequest pagination = 2;
+  optional double min_score = 3;
+  bool only_recommended = 4;
+  hirehub.common.v1.SortOrder sort = 5;
+}
+
+message GetMatchesByResumeResponse {
+  repeated Match matches = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+// ============================================================================
+// Request/Response Messages - Match Calculation
+// ============================================================================
+
+message CalculateMatchRequest {
+  string job_id = 1;
+  string resume_id = 2;
+  string user_id = 3;
+  bool force_recalculate = 4;    // Recalculate even if exists
+}
+
+message CalculateMatchResponse {
+  Match match = 1;
+  bool was_cached = 2;
+}
+
+message BatchCalculateMatchesRequest {
+  string job_id = 1;
+  repeated string resume_ids = 2;
+  bool force_recalculate = 3;
+}
+
+message BatchCalculateMatchesResponse {
+  repeated Match matches = 1;
+  hirehub.common.v1.BatchResult result = 2;
+}
+
+message CalculateMatchesForJobRequest {
+  string job_id = 1;
+  int32 limit = 2;               // Max number of candidates to match
+  double min_score_threshold = 3; // Only keep matches above threshold
+  bool force_recalculate = 4;
+}
+
+message CalculateMatchesForJobResponse {
+  repeated Match matches = 1;
+  int32 total_processed = 2;
+  int32 total_qualified = 3;
+}
+
+message CalculateMatchesForUserRequest {
+  string user_id = 1;
+  string resume_id = 2;
+  int32 limit = 3;
+  double min_score_threshold = 4;
+  bool force_recalculate = 5;
+}
+
+message CalculateMatchesForUserResponse {
+  repeated Match matches = 1;
+  int32 total_processed = 2;
+  int32 total_qualified = 3;
+}
+
+message GetTopMatchesForJobRequest {
+  string job_id = 1;
+  int32 top_n = 2;               // Top N matches
+  double min_score = 3;
+}
+
+message GetTopMatchesForJobResponse {
+  repeated Match matches = 1;
+}
+
+message GetRecommendedJobsForUserRequest {
+  string user_id = 1;
+  string resume_id = 2;
+  int32 limit = 3;
+}
+
+message GetRecommendedJobsForUserResponse {
+  repeated Match matches = 1;
+}
+
+// ============================================================================
+// Request/Response Messages - Match Feedback
+// ============================================================================
+
+message CreateMatchFeedbackRequest {
+  string match_id = 1;
+  FeedbackType feedback_type = 2;
+  string feedback_by = 3;
+  string comment = 4;
+}
+
+message CreateMatchFeedbackResponse {
+  MatchFeedback feedback = 1;
+}
+
+message GetMatchFeedbackRequest {
+  string id = 1;
+}
+
+message GetMatchFeedbackResponse {
+  MatchFeedback feedback = 1;
+}
+
+message ListMatchFeedbacksRequest {
+  hirehub.common.v1.PaginationRequest pagination = 1;
+  optional string match_id = 2;
+  optional string feedback_by = 3;
+  optional FeedbackType feedback_type = 4;
+}
+
+message ListMatchFeedbacksResponse {
+  repeated MatchFeedback feedbacks = 1;
+  hirehub.common.v1.PaginationResponse pagination = 2;
+}
+
+message GetFeedbackByMatchRequest {
+  string match_id = 1;
+}
+
+message GetFeedbackByMatchResponse {
+  repeated MatchFeedback feedbacks = 1;
+}
+
+// ============================================================================
+// Statistics and Analytics
+// ============================================================================
+
+message GetMatchStatsRequest {
+  optional string job_id = 1;
+  optional string user_id = 2;
+  optional string company_id = 3;
+  optional hirehub.common.v1.DateRange date_range = 4;
+}
+
+message GetMatchStatsResponse {
+  int64 total_matches = 1;
+  double average_overall_score = 2;
+  double average_skill_score = 3;
+  double average_experience_score = 4;
+  double average_culture_score = 5;
+  int64 recommended_count = 6;
+  map<string, int64> score_distribution = 7;  // Score range -> count
+  map<string, int64> feedback_distribution = 8; // Feedback type -> count
+}
+
+message GetMatchingInsightsRequest {
+  string job_id = 1;
+}
+
+message GetMatchingInsightsResponse {
+  repeated string most_common_skill_gaps = 1;
+  repeated string most_matched_skills = 2;
+  double average_experience_gap = 3;
+  string recommendation = 4;
+}
+
+// ============================================================================
+// Service Definition
+// ============================================================================
+
+service MatchService {
+  // Match CRUD
+  rpc CreateMatch(CreateMatchRequest) returns (CreateMatchResponse);
+  rpc GetMatch(GetMatchRequest) returns (GetMatchResponse);
+  rpc DeleteMatch(DeleteMatchRequest) returns (DeleteMatchResponse);
+  rpc ListMatches(ListMatchesRequest) returns (ListMatchesResponse);
+  rpc GetMatchesByJob(GetMatchesByJobRequest) returns (GetMatchesByJobResponse);
+  rpc GetMatchesByUser(GetMatchesByUserRequest) returns (GetMatchesByUserResponse);
+  rpc GetMatchesByResume(GetMatchesByResumeRequest) returns (GetMatchesByResumeResponse);
+
+  // Match calculation (AI-powered)
+  rpc CalculateMatch(CalculateMatchRequest) returns (CalculateMatchResponse);
+  rpc BatchCalculateMatches(BatchCalculateMatchesRequest) returns (BatchCalculateMatchesResponse);
+  rpc CalculateMatchesForJob(CalculateMatchesForJobRequest) returns (CalculateMatchesForJobResponse);
+  rpc CalculateMatchesForUser(CalculateMatchesForUserRequest) returns (CalculateMatchesForUserResponse);
+  rpc GetTopMatchesForJob(GetTopMatchesForJobRequest) returns (GetTopMatchesForJobResponse);
+  rpc GetRecommendedJobsForUser(GetRecommendedJobsForUserRequest) returns (GetRecommendedJobsForUserResponse);
+
+  // Match feedback
+  rpc CreateMatchFeedback(CreateMatchFeedbackRequest) returns (CreateMatchFeedbackResponse);
+  rpc GetMatchFeedback(GetMatchFeedbackRequest) returns (GetMatchFeedbackResponse);
+  rpc ListMatchFeedbacks(ListMatchFeedbacksRequest) returns (ListMatchFeedbacksResponse);
+  rpc GetFeedbackByMatch(GetFeedbackByMatchRequest) returns (GetFeedbackByMatchResponse);
+
+  // Analytics
+  rpc GetMatchStats(GetMatchStatsRequest) returns (GetMatchStatsResponse);
+  rpc GetMatchingInsights(GetMatchingInsightsRequest) returns (GetMatchingInsightsResponse);
+}

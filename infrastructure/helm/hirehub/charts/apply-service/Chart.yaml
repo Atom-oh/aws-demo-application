@@ -1,0 +1,16 @@
+apiVersion: v2
+name: apply-service
+description: HireHub Apply Service - Job application management (Go/gRPC)
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - application
+  - apply
+  - grpc
+  - go
+
+maintainers:
+  - name: HireHub Team
+    email: team@hirehub.io

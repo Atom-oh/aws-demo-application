@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notification-service-config
+  namespace: hirehub
+  labels:
+    app.kubernetes.io/name: notification-service
+    app.kubernetes.io/component: backend
+data:
+  # Server configuration
+  APP_ENV: "production"
+  GRPC_PORT: "50054"
+  HTTP_PORT: "8007"
+  METRICS_PORT: "9090"
+
+  # Database configuration
+  DB_NAME: "hirehub_notification"
+  DB_SSLMODE: "require"
+  DB_MAX_OPEN_CONNS: "25"
+  DB_MAX_IDLE_CONNS: "10"
+  DB_CONN_MAX_LIFETIME: "5m"
+
+  # Redis configuration
+  REDIS_DB: "2"
+  REDIS_POOL_SIZE: "10"
+
+  # Kafka configuration
+  KAFKA_CONSUMER_GROUP_ID: "notification-service-group"
+  KAFKA_TOPICS: "resume.processed,match.recommended,application.submitted,application.status_changed,interview.scheduled"
+  KAFKA_AUTO_OFFSET_RESET: "earliest"
+  KAFKA_SESSION_TIMEOUT_MS: "30000"
+  KAFKA_HEARTBEAT_INTERVAL_MS: "10000"
+
+  # Email configuration (AWS SES)
+  AWS_REGION: "ap-northeast-2"
+  SES_FROM_EMAIL: "noreply@hirehub.example.com"
+  SES_FROM_NAME: "HireHub"
+
+  # Push notification configuration (FCM)
+  FCM_PROJECT_ID: ""
+
+  # Outbox pattern configuration
+  OUTBOX_POLL_INTERVAL: "5s"
+  OUTBOX_BATCH_SIZE: "100"
+
+  # Logging
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+
+  # Tracing
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability:4317"
+  OTEL_SERVICE_NAME: "notification-service"
+
+  # gRPC settings
+  GRPC_MAX_RECV_MSG_SIZE: "4194304"
+  GRPC_MAX_SEND_MSG_SIZE: "4194304"

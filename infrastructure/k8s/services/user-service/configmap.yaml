@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-service-config
+  namespace: hirehub
+  labels:
+    app.kubernetes.io/name: user-service
+    app.kubernetes.io/component: backend
+data:
+  # Server configuration
+  APP_ENV: "production"
+  GRPC_PORT: "50051"
+  HTTP_PORT: "8001"
+  METRICS_PORT: "9090"
+
+  # Database configuration
+  DB_NAME: "hirehub_user"
+  DB_SSLMODE: "require"
+  DB_MAX_OPEN_CONNS: "25"
+  DB_MAX_IDLE_CONNS: "10"
+  DB_CONN_MAX_LIFETIME: "5m"
+
+  # Redis configuration
+  REDIS_DB: "0"
+  REDIS_POOL_SIZE: "10"
+
+  # Cognito configuration
+  AWS_REGION: "ap-northeast-2"
+  COGNITO_USER_POOL_ID: ""
+  COGNITO_CLIENT_ID: ""
+
+  # Logging
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+
+  # Tracing
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability:4317"
+  OTEL_SERVICE_NAME: "user-service"
+
+  # gRPC settings
+  GRPC_MAX_RECV_MSG_SIZE: "4194304"
+  GRPC_MAX_SEND_MSG_SIZE: "4194304"

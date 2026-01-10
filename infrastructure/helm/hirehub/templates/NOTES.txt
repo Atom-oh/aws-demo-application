@@ -1,0 +1,106 @@
+==============================================================================
+  __  __  __             __  __        __
+ / / / / (_)_______     / / / / __  __/ /_
+/ /_/ / / / ___/ _ \   / /_/ / / / / / __ \
+\__  / / / /  /  __/  / __  / / /_/ / /_/ /
+ /_/ /_/_/    \___/  /_/ /_/  \__,_/_.___/
+
+  AI-Powered Recruitment Platform
+==============================================================================
+
+Thank you for installing {{ .Chart.Name }}!
+
+Release Name: {{ .Release.Name }}
+Namespace: {{ include "hirehub.namespace" . }}
+Environment: {{ include "hirehub.environment" . }}
+
+==============================================================================
+DEPLOYED SERVICES:
+==============================================================================
+{{- if index .Values "user-service" "enabled" }}
+- User Service (Go/gRPC)
+  Port: {{ .Values.global.grpc.port }}
+  Replicas: {{ index .Values "user-service" "replicaCount" }}
+{{- end }}
+
+{{- if index .Values "job-service" "enabled" }}
+- Job Service (Java/Spring Boot/gRPC)
+  Port: {{ .Values.global.grpc.port }}
+  Replicas: {{ index .Values "job-service" "replicaCount" }}
+{{- end }}
+
+{{- if index .Values "resume-service" "enabled" }}
+- Resume Service (Python/FastAPI/gRPC)
+  Port: {{ .Values.global.grpc.port }}
+  Replicas: {{ index .Values "resume-service" "replicaCount" }}
+{{- end }}
+
+{{- if index .Values "apply-service" "enabled" }}
+- Apply Service (Go/gRPC)
+  Port: {{ .Values.global.grpc.port }}
+  Replicas: {{ index .Values "apply-service" "replicaCount" }}
+{{- end }}
+
+{{- if index .Values "ai-service" "enabled" }}
+- AI Service (Python/FastAPI)
+  Port: {{ .Values.global.grpc.port }}
+  Replicas: {{ index .Values "ai-service" "replicaCount" }}
+{{- end }}
+
+{{- if index .Values "match-service" "enabled" }}
+- Match Service (Python/FastAPI/gRPC)
+  Port: {{ .Values.global.grpc.port }}
+  Replicas: {{ index .Values "match-service" "replicaCount" }}
+{{- end }}
+
+{{- if index .Values "notification-service" "enabled" }}
+- Notification Service (Go/Kafka)
+  Port: {{ .Values.global.grpc.port }}
+  Replicas: {{ index .Values "notification-service" "replicaCount" }}
+  {{- if index .Values "notification-service" "keda" "enabled" }}
+  KEDA Auto-scaling: Enabled
+  {{- end }}
+{{- end }}
+
+==============================================================================
+CONFIGURATION:
+==============================================================================
+Database Host: {{ .Values.global.database.host }}
+Cache Host: {{ .Values.global.cache.host }}
+Kafka Brokers: {{ .Values.global.kafka.bootstrapServers }}
+OpenSearch: {{ .Values.global.opensearch.host }}
+
+{{- if .Values.global.istio.enabled }}
+Service Mesh: Istio (Enabled)
+{{- else }}
+Service Mesh: Disabled
+{{- end }}
+
+{{- if .Values.global.monitoring.enabled }}
+Monitoring: Enabled (Prometheus namespace: {{ .Values.global.monitoring.prometheusNamespace }})
+{{- end }}
+
+{{- if .Values.global.irsa.enabled }}
+IRSA: Enabled
+{{- end }}
+
+==============================================================================
+USEFUL COMMANDS:
+==============================================================================
+
+# Check pod status
+kubectl get pods -n {{ include "hirehub.namespace" . }}
+
+# View all services
+kubectl get svc -n {{ include "hirehub.namespace" . }}
+
+# Check HPA status
+kubectl get hpa -n {{ include "hirehub.namespace" . }}
+
+# View logs for a service
+kubectl logs -f -l app.kubernetes.io/name=<service-name> -n {{ include "hirehub.namespace" . }}
+
+# Port forward to a service
+kubectl port-forward svc/<service-name> {{ .Values.global.grpc.port }}:{{ .Values.global.grpc.port }} -n {{ include "hirehub.namespace" . }}
+
+==============================================================================
