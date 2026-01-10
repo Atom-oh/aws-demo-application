@@ -1,0 +1,4 @@
+# Mock data generation dependencies
+faker>=18.0.0
+click>=8.0.0
+tqdm>=4.65.0

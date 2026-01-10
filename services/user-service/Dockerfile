@@ -6,17 +6,18 @@ RUN apk add --no-cache git ca-certificates tzdata
 
 WORKDIR /build
 
-# Copy go mod files first for better layer caching
-COPY go.mod go.sum ./
+# Copy proto module first
+COPY proto/ /proto/
 
-# Copy proto dependency (referenced in go.mod replace directive)
-COPY --from=proto . /proto
+# Copy service go mod files
+COPY services/user-service/go.mod services/user-service/go.sum ./
 
-# Download dependencies
-RUN go mod download && go mod verify
+# Update go.mod to point to local proto
+RUN go mod edit -replace github.com/hirehub/proto=/proto && \
+    go mod download && go mod verify
 
 # Copy source code
-COPY . .
+COPY services/user-service/ .
 
 # Build statically linked binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
@@ -40,8 +41,8 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/user-service .
 
-# Copy migrations
-COPY --from=builder /build/migrations ./migrations
+# Copy migrations if they exist (create empty dir first as fallback)
+RUN mkdir -p ./migrations
 
 # Set ownership
 RUN chown -R appuser:appgroup /app

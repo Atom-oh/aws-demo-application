@@ -294,6 +294,70 @@ class SkillExtractionResponse(BaseModel):
     processing_time_ms: int
 
 
+# AgentCore Matching Schemas
+class AgentMatchRequest(BaseModel):
+    """Request for agent-based job matching."""
+
+    resume_id: UUID
+    job_id: UUID
+    resume_text: str = Field(..., description="Full text of the resume")
+    job_description: str = Field(..., description="Full job description")
+    session_id: Optional[str] = Field(
+        None, description="Session ID for multi-turn conversations"
+    )
+
+
+class AgentMatchResponse(BaseModel):
+    """Response for agent-based job matching."""
+
+    task_id: UUID
+    session_id: str
+    resume_id: Optional[UUID] = None
+    job_id: Optional[UUID] = None
+    overall_score: int = Field(..., ge=0, le=100, description="Overall match score 0-100")
+    skill_match: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Skill matching details with matched_skills, missing_skills, and analysis"
+    )
+    experience_match: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Experience matching details with relevant experience and gaps"
+    )
+    education_match: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Education matching details"
+    )
+    recommendation: str = Field(
+        ...,
+        description="Hiring recommendation: STRONG_MATCH, GOOD_MATCH, PARTIAL_MATCH, or NOT_RECOMMENDED"
+    )
+    detailed_analysis: str = Field(
+        default="",
+        description="Comprehensive analysis text"
+    )
+    model_used: str
+    tokens_used: int
+    processing_time_ms: int
+
+
+class AgentFollowupRequest(BaseModel):
+    """Request for follow-up question on agent matching."""
+
+    session_id: str = Field(..., description="Session ID from previous agent match")
+    question: str = Field(..., description="Follow-up question to ask")
+
+
+class AgentFollowupResponse(BaseModel):
+    """Response for agent follow-up question."""
+
+    task_id: UUID
+    session_id: str
+    response: str = Field(..., description="Agent's response to the follow-up question")
+    model_used: str
+    tokens_used: int
+    processing_time_ms: int
+
+
 # Task Schemas
 class AITaskResponse(BaseModel):
     """Response for AI task status."""

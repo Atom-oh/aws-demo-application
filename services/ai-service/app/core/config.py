@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     # AgentCore
     AGENTCORE_AGENT_ID: Optional[str] = None
     AGENTCORE_ALIAS_ID: Optional[str] = None
+    USE_AGENTCORE: bool = True  # Use AgentCore for matching when configured; falls back to invoke_model if False or unconfigured
 
     # Kafka
     KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"

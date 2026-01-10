@@ -441,6 +441,59 @@ make seed-reset
 
 ---
 
+## AWS 배포
+
+### Prerequisites
+- AWS CLI configured
+- Terraform >= 1.5
+- kubectl
+- Docker
+
+### 1. Terraform으로 인프라 배포
+
+```bash
+cd infrastructure/terraform/deploy
+terraform init
+terraform plan
+terraform apply
+
+# EKS kubeconfig 설정
+aws eks update-kubeconfig --name demo-hirehub-eks --region ap-northeast-2
+```
+
+### 2. ArgoCD 설치 및 GitOps 설정
+
+```bash
+# ArgoCD 설치
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# ArgoCD Applications 배포
+kubectl apply -f infrastructure/argocd/applications/kong.yaml
+```
+
+### 3. Docker 이미지 빌드 및 ECR 푸시
+
+```bash
+# ECR 로그인
+aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com
+
+# 전체 서비스 빌드 및 푸시
+./build-all.sh
+```
+
+### Security 고려사항
+
+| 항목 | 설정 |
+|------|------|
+| **Kong NLB** | Internal scheme (VPC 내부만 접근) |
+| **외부 접근** | CloudFront → ALB → Kong |
+| **CloudFront SG** | AWS Managed Prefix List 사용 |
+| **IAM** | Pod Identity (IRSA 대신 권장) |
+| **DB 접근** | Private Subnet, NAT Gateway만 |
+
+---
+
 ## 로컬 개발 환경
 
 ```bash

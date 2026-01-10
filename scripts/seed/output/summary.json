@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-01-10T08:46:08.514307",
+  "counts": {
+    "companies": 50,
+    "users": 500,
+    "job_seekers": 425,
+    "company_users": 75,
+    "jobs": 200,
+    "jobs_open": 129,
+    "jobs_closed": 51,
+    "jobs_draft": 20,
+    "resumes": 425,
+    "applications": 1000,
+    "applications_by_status": {
+      "pending": 422,
+      "reviewing": 291,
+      "interview": 148,
+      "offered": 84,
+      "rejected": 55
+    }
+  }
+}

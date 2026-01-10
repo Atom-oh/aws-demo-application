@@ -1,0 +1,128 @@
+{
+  "categories": {
+    "backend": {
+      "titles": [
+        "백엔드 개발자",
+        "서버 개발자",
+        "Backend Engineer",
+        "Server Engineer",
+        "API 개발자",
+        "시니어 백엔드 개발자",
+        "백엔드 테크 리드",
+        "Platform Engineer"
+      ],
+      "skills": ["Python", "Java", "Go", "Spring Boot", "FastAPI", "Django", "PostgreSQL", "MySQL", "Redis", "Kafka", "gRPC"]
+    },
+    "frontend": {
+      "titles": [
+        "프론트엔드 개발자",
+        "Frontend Engineer",
+        "웹 개발자",
+        "시니어 프론트엔드 개발자",
+        "UI 개발자",
+        "프론트엔드 테크 리드"
+      ],
+      "skills": ["JavaScript", "TypeScript", "React", "Vue.js", "Angular", "Next.js"]
+    },
+    "fullstack": {
+      "titles": [
+        "풀스택 개발자",
+        "Full Stack Engineer",
+        "웹 풀스택 개발자",
+        "시니어 풀스택 개발자"
+      ],
+      "skills": ["JavaScript", "TypeScript", "Python", "React", "Next.js", "Node.js", "PostgreSQL", "MongoDB"]
+    },
+    "mobile": {
+      "titles": [
+        "모바일 개발자",
+        "iOS 개발자",
+        "Android 개발자",
+        "크로스플랫폼 개발자",
+        "Flutter 개발자",
+        "React Native 개발자"
+      ],
+      "skills": ["Swift", "Kotlin", "Flutter", "React", "JavaScript"]
+    },
+    "data": {
+      "titles": [
+        "데이터 엔지니어",
+        "Data Engineer",
+        "데이터 분석가",
+        "Data Analyst",
+        "BI 엔지니어",
+        "ETL 개발자",
+        "시니어 데이터 엔지니어"
+      ],
+      "skills": ["Python", "SQL", "PostgreSQL", "Kafka", "AWS", "Elasticsearch"]
+    },
+    "ml": {
+      "titles": [
+        "머신러닝 엔지니어",
+        "ML Engineer",
+        "AI 엔지니어",
+        "딥러닝 엔지니어",
+        "NLP 엔지니어",
+        "MLOps 엔지니어",
+        "AI 연구원"
+      ],
+      "skills": ["Python", "PostgreSQL", "AWS", "Docker", "Kubernetes"]
+    },
+    "devops": {
+      "titles": [
+        "DevOps 엔지니어",
+        "SRE",
+        "Site Reliability Engineer",
+        "인프라 엔지니어",
+        "클라우드 엔지니어",
+        "플랫폼 엔지니어",
+        "시니어 DevOps 엔지니어"
+      ],
+      "skills": ["AWS", "GCP", "Azure", "Docker", "Kubernetes", "Terraform", "Jenkins", "GitHub Actions", "ArgoCD"]
+    },
+    "security": {
+      "titles": [
+        "보안 엔지니어",
+        "Security Engineer",
+        "정보보안 전문가",
+        "보안 컨설턴트",
+        "침해대응 분석가",
+        "시니어 보안 엔지니어"
+      ],
+      "skills": ["Python", "Go", "AWS", "Docker", "Kubernetes", "Linux"]
+    },
+    "qa": {
+      "titles": [
+        "QA 엔지니어",
+        "테스트 엔지니어",
+        "SDET",
+        "자동화 테스트 엔지니어",
+        "품질 관리 엔지니어"
+      ],
+      "skills": ["Python", "JavaScript", "Java", "SQL"]
+    },
+    "pm": {
+      "titles": [
+        "프로덕트 매니저",
+        "Product Manager",
+        "서비스 기획자",
+        "시니어 PM",
+        "Technical PM",
+        "프로젝트 매니저"
+      ],
+      "skills": ["SQL"]
+    }
+  },
+  "experience_levels": [
+    {"name": "신입", "min_years": 0, "max_years": 0, "salary_min": 3500, "salary_max": 4500},
+    {"name": "주니어", "min_years": 1, "max_years": 3, "salary_min": 4000, "salary_max": 6000},
+    {"name": "미들", "min_years": 3, "max_years": 5, "salary_min": 5500, "salary_max": 8000},
+    {"name": "시니어", "min_years": 5, "max_years": 10, "salary_min": 7000, "salary_max": 12000},
+    {"name": "리드", "min_years": 8, "max_years": 15, "salary_min": 10000, "salary_max": 18000}
+  ],
+  "employment_types": [
+    {"name": "정규직", "weight": 80},
+    {"name": "계약직", "weight": 10},
+    {"name": "인턴", "weight": 10}
+  ]
+}

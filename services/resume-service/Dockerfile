@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better layer caching
-COPY requirements.txt .
+COPY services/resume-service/requirements.txt .
 
 # Install Python dependencies to user directory
 RUN pip install --no-cache-dir --user -r requirements.txt
@@ -38,14 +38,7 @@ COPY --from=builder /root/.local /home/appuser/.local
 ENV PATH=/home/appuser/.local/bin:$PATH
 
 # Copy application code
-COPY --chown=appuser:appgroup app ./app
-
-# Copy alembic migrations
-COPY --chown=appuser:appgroup alembic ./alembic
-COPY --chown=appuser:appgroup alembic.ini .
-
-# Copy pyproject.toml if needed for package info
-COPY --chown=appuser:appgroup pyproject.toml .
+COPY --chown=appuser:appgroup services/resume-service/app ./app
 
 # Set ownership of app directory
 RUN chown -R appuser:appgroup /app

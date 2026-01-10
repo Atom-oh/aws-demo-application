@@ -15,6 +15,10 @@ from app.models.schemas import (
     SkillExtractionRequest,
     SkillExtractionResponse,
     AITaskResponse,
+    AgentMatchRequest,
+    AgentMatchResponse,
+    AgentFollowupRequest,
+    AgentFollowupResponse,
 )
 from app.services.analysis_service import AnalysisService
 from app.repositories.ai_task_repository import AITaskRepository
@@ -57,7 +61,8 @@ async def match_job(
     """
     Match a resume against job requirements.
 
-    Uses AgentCore with RAG to provide detailed matching analysis.
+    Uses simple model invocation to provide matching analysis.
+    For AgentCore-powered matching, use /match/agent endpoint.
     """
     repository = AITaskRepository(db)
     service = AnalysisService(repository)
@@ -74,6 +79,109 @@ async def match_job(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Job matching failed: {str(e)}",
+        )
+
+
+@router.post("/match/agent", response_model=AgentMatchResponse)
+async def match_job_with_agent(
+    request: AgentMatchRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Match a resume against job requirements using AgentCore.
+
+    This endpoint uses Bedrock AgentCore for intelligent matching analysis.
+    It supports multi-turn conversations via session_id for follow-up questions.
+
+    If AgentCore is not configured (AGENTCORE_AGENT_ID, AGENTCORE_ALIAS_ID),
+    it falls back to standard model invocation.
+
+    Returns a session_id that can be used for follow-up questions.
+    """
+    repository = AITaskRepository(db)
+    service = AnalysisService(repository)
+
+    try:
+        result = await service.match_with_agent(
+            resume_id=request.resume_id,
+            job_id=request.job_id,
+            resume_text=request.resume_text,
+            job_description=request.job_description,
+            session_id=request.session_id,
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Agent matching failed: {str(e)}",
+        )
+
+
+@router.post("/match/agent/followup", response_model=AgentFollowupResponse)
+async def agent_match_followup(
+    request: AgentFollowupRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Ask a follow-up question about a previous agent match analysis.
+
+    Requires a valid session_id from a previous /match/agent call.
+    Sessions expire after 1 hour of inactivity.
+    """
+    repository = AITaskRepository(db)
+    service = AnalysisService(repository)
+
+    try:
+        result = await service.followup_match_question(
+            session_id=request.session_id,
+            question=request.question,
+        )
+        return AgentFollowupResponse(
+            task_id=result["task_id"],
+            session_id=result["session_id"],
+            response=result["response"],
+            model_used=result["model_used"],
+            tokens_used=result["tokens_used"],
+            processing_time_ms=result["processing_time_ms"],
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Follow-up question failed: {str(e)}",
+        )
+
+
+@router.delete("/match/agent/session/{session_id}")
+async def end_agent_session(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    End an agent matching session.
+
+    Cleans up session resources. The session_id will no longer be valid
+    for follow-up questions after this call.
+    """
+    repository = AITaskRepository(db)
+    service = AnalysisService(repository)
+
+    try:
+        service.matching_agent.end_session(session_id)
+        return {"message": f"Session {session_id} ended successfully"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to end session: {str(e)}",
         )
 
 

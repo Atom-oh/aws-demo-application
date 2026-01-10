@@ -17,8 +17,10 @@ from app.models.schemas import (
     ExperienceInfo,
     MatchResult,
     AnalysisType,
+    AgentMatchResponse,
 )
 from app.repositories.ai_task_repository import AITaskRepository
+from app.services.matching_agent import MatchingAgentService
 
 
 class AnalysisService:
@@ -85,6 +87,8 @@ Return valid JSON only.
         self.repository = repository
         self.bedrock = BedrockClient()
         self.model_id = settings.BEDROCK_ANALYSIS_MODEL
+        self.matching_agent = MatchingAgentService(repository)
+        self.use_agentcore = settings.USE_AGENTCORE
 
     async def _invoke_model(
         self,
@@ -293,6 +297,75 @@ Return valid JSON only.
                 error_message=str(e),
             )
             raise
+
+    async def match_with_agent(
+        self,
+        resume_id: UUID,
+        job_id: UUID,
+        resume_text: str,
+        job_description: str,
+        session_id: Optional[str] = None,
+    ) -> AgentMatchResponse:
+        """
+        Match a resume against a job description using AgentCore.
+
+        Uses the AgentCore-based matching service for intelligent analysis.
+        Falls back to standard model invocation if AgentCore is not configured
+        or USE_AGENTCORE is False.
+
+        Args:
+            resume_id: UUID of the resume
+            job_id: UUID of the job
+            resume_text: Full text of the resume
+            job_description: Full job description
+            session_id: Optional session ID for multi-turn conversations
+
+        Returns:
+            AgentMatchResponse with detailed matching analysis
+        """
+        result = await self.matching_agent.match_with_agent(
+            resume_text=resume_text,
+            job_description=job_description,
+            session_id=session_id,
+            resume_id=resume_id,
+            job_id=job_id,
+        )
+
+        return AgentMatchResponse(
+            task_id=result["task_id"],
+            session_id=result["session_id"],
+            resume_id=result["resume_id"],
+            job_id=result["job_id"],
+            overall_score=result["overall_score"],
+            skill_match=result["skill_match"],
+            experience_match=result["experience_match"],
+            education_match=result["education_match"],
+            recommendation=result["recommendation"],
+            detailed_analysis=result["detailed_analysis"],
+            model_used=result["model_used"],
+            tokens_used=result["tokens_used"],
+            processing_time_ms=result["processing_time_ms"],
+        )
+
+    async def followup_match_question(
+        self,
+        session_id: str,
+        question: str,
+    ) -> Dict[str, Any]:
+        """
+        Ask a follow-up question about a previous match analysis.
+
+        Args:
+            session_id: Session ID from previous match_with_agent call
+            question: Follow-up question to ask
+
+        Returns:
+            Dictionary containing the response and metadata
+        """
+        return await self.matching_agent.followup_question(
+            session_id=session_id,
+            question=question,
+        )
 
     async def extract_skills(
         self,

@@ -1,0 +1,64 @@
+{
+  "universities": [
+    {"name": "서울대학교", "tier": 1, "location": "서울"},
+    {"name": "연세대학교", "tier": 1, "location": "서울"},
+    {"name": "고려대학교", "tier": 1, "location": "서울"},
+    {"name": "KAIST", "tier": 1, "location": "대전"},
+    {"name": "POSTECH", "tier": 1, "location": "포항"},
+    {"name": "성균관대학교", "tier": 1, "location": "서울"},
+    {"name": "한양대학교", "tier": 1, "location": "서울"},
+    {"name": "서강대학교", "tier": 1, "location": "서울"},
+    {"name": "중앙대학교", "tier": 2, "location": "서울"},
+    {"name": "경희대학교", "tier": 2, "location": "서울"},
+    {"name": "한국외국어대학교", "tier": 2, "location": "서울"},
+    {"name": "이화여자대학교", "tier": 1, "location": "서울"},
+    {"name": "숙명여자대학교", "tier": 2, "location": "서울"},
+    {"name": "건국대학교", "tier": 2, "location": "서울"},
+    {"name": "동국대학교", "tier": 2, "location": "서울"},
+    {"name": "홍익대학교", "tier": 2, "location": "서울"},
+    {"name": "국민대학교", "tier": 2, "location": "서울"},
+    {"name": "세종대학교", "tier": 2, "location": "서울"},
+    {"name": "숭실대학교", "tier": 2, "location": "서울"},
+    {"name": "단국대학교", "tier": 2, "location": "서울"},
+    {"name": "인하대학교", "tier": 2, "location": "인천"},
+    {"name": "아주대학교", "tier": 2, "location": "수원"},
+    {"name": "부산대학교", "tier": 2, "location": "부산"},
+    {"name": "경북대학교", "tier": 2, "location": "대구"},
+    {"name": "전남대학교", "tier": 2, "location": "광주"},
+    {"name": "충남대학교", "tier": 2, "location": "대전"},
+    {"name": "전북대학교", "tier": 3, "location": "전주"},
+    {"name": "충북대학교", "tier": 3, "location": "청주"},
+    {"name": "강원대학교", "tier": 3, "location": "춘천"},
+    {"name": "제주대학교", "tier": 3, "location": "제주"},
+    {"name": "울산대학교", "tier": 3, "location": "울산"},
+    {"name": "한국항공대학교", "tier": 2, "location": "고양"},
+    {"name": "가천대학교", "tier": 3, "location": "성남"},
+    {"name": "광운대학교", "tier": 3, "location": "서울"},
+    {"name": "한국산업기술대학교", "tier": 3, "location": "시흥"},
+    {"name": "서울시립대학교", "tier": 2, "location": "서울"},
+    {"name": "한국공학대학교", "tier": 3, "location": "안산"},
+    {"name": "경기대학교", "tier": 3, "location": "수원"},
+    {"name": "명지대학교", "tier": 3, "location": "서울"},
+    {"name": "상명대학교", "tier": 3, "location": "서울"}
+  ],
+  "majors": {
+    "engineering": [
+      "컴퓨터공학", "소프트웨어학", "정보통신공학", "전자공학", "전기공학",
+      "기계공학", "산업공학", "화학공학", "신소재공학", "건축공학"
+    ],
+    "science": [
+      "수학", "물리학", "화학", "생명과학", "통계학"
+    ],
+    "business": [
+      "경영학", "경제학", "회계학", "무역학", "금융학"
+    ],
+    "humanities": [
+      "영어영문학", "국어국문학", "철학", "심리학", "사회학"
+    ]
+  },
+  "degrees": [
+    {"name": "학사", "weight": 70},
+    {"name": "석사", "weight": 25},
+    {"name": "박사", "weight": 5}
+  ]
+}
