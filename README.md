@@ -16,57 +16,63 @@ AWS 클라우드 네이티브 기술을 활용한 AI 기반 채용 플랫폼 데
 
 ## 서비스 아키텍처
 
-```
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│                                    Amazon Cognito                                         │
-│            ┌─────────────────────────────┐    ┌─────────────────────────────┐            │
-│            │   User Pool (일반 사용자)     │    │   User Pool (Admin)          │            │
-│            │  • 구직자/기업 회원            │    │  • 관리자 전용                 │            │
-│            │  • 소셜로그인 (Google/Kakao)  │    │  • MFA 필수                   │            │
-│            └─────────────────────────────┘    └─────────────────────────────┘            │
-└──────────────────────────────────────────────────────────────────────────────────────────┘
-                          │                                    │
-                          ▼                                    ▼
-              ┌─────────────────────┐              ┌─────────────────────┐
-              │    Web Frontend     │              │   Admin Dashboard   │
-              │     (Next.js)       │              │     (Next.js)       │
-              └─────────────────────┘              └─────────────────────┘
-                          │                                    │
-                          └──────────────┬─────────────────────┘
-                                         ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              Kong API Gateway                                │
-│                    (Ingress, Rate Limiting, Circuit Breaker, JWT 검증)       │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                        │
-        ┌───────────────────────────────┼───────────────────────────────┐
-        │                               │                               │
-        ▼                               ▼                               ▼
-┌───────────────┐              ┌───────────────┐              ┌───────────────┐
-│  user-service │◄────gRPC────►│  job-service  │◄────gRPC────►│ resume-service│
-│   (회원관리)   │              │  (채용공고)    │              │  (이력서/PII) │
-└───────────────┘              └───────────────┘              └───────────────┘
-        │                               │                               │
-        │                               │                               │
-        ▼                               ▼                               ▼
-┌───────────────┐              ┌───────────────┐              ┌───────────────┐
-│ apply-service │◄────gRPC────►│match-service  │◄────gRPC────►│  ai-service   │
-│  (지원관리)    │              │  (AI 매칭)     │              │ (AgentCore)   │
-└───────────────┘              └───────────────┘              └───────────────┘
-        │                               │                               │
-        └───────────────────────────────┼───────────────────────────────┘
-                                        │
-                                        ▼
-                          ┌─────────────────────────┐
-                          │   notification-service   │
-                          │     (알림/이메일/푸시)    │
-                          └─────────────────────────┘
-                                        │
-                                        ▼
-                          ┌─────────────────────────┐
-                          │      Amazon MSK          │
-                          │   (Kafka - 비동기 통신)   │
-                          └─────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Cognito["Amazon Cognito"]
+        UP1["User Pool<br/>(구직자/기업)"]
+        UP2["User Pool<br/>(Admin, MFA)"]
+    end
+
+    subgraph Frontend["Frontend"]
+        WEB["Web Frontend<br/>Next.js"]
+        ADMIN["Admin Dashboard<br/>Next.js"]
+    end
+
+    subgraph Gateway["API Gateway"]
+        KONG["Kong<br/>Rate Limiting | Circuit Breaker | JWT"]
+    end
+
+    subgraph Services["Microservices (gRPC + mTLS)"]
+        USER["user-service<br/>Go | 회원관리"]
+        JOB["job-service<br/>Java | 채용공고"]
+        RESUME["resume-service<br/>Python | 이력서/PII"]
+        APPLY["apply-service<br/>Go | 지원관리"]
+        MATCH["match-service<br/>Python | AI매칭"]
+        AI["ai-service<br/>Python | AgentCore"]
+        NOTIFY["notification-service<br/>Go | 알림"]
+    end
+
+    subgraph Data["Data Stores"]
+        AURORA[("Aurora<br/>PostgreSQL")]
+        OPENSEARCH[("OpenSearch")]
+        REDIS[("ElastiCache<br/>Redis")]
+        S3[("S3<br/>이력서")]
+    end
+
+    subgraph AI_ML["AI/ML"]
+        BEDROCK["Bedrock<br/>AgentCore"]
+        QWEN["QWEN3<br/>PII 제거"]
+        KB["Bedrock KB<br/>RAG"]
+    end
+
+    MSK["Amazon MSK<br/>Kafka"]
+
+    UP1 --> WEB
+    UP2 --> ADMIN
+    WEB --> KONG
+    ADMIN --> KONG
+    KONG --> USER & JOB & RESUME
+    USER <--> JOB <--> RESUME
+    APPLY <--> MATCH <--> AI
+    USER --> APPLY
+    JOB --> MATCH
+    RESUME --> AI
+    NOTIFY --> MSK
+    AI --> BEDROCK & QWEN & KB
+    USER & JOB & APPLY --> AURORA
+    JOB & RESUME --> OPENSEARCH
+    USER --> REDIS
+    RESUME --> S3
 ```
 
 ---
@@ -90,26 +96,34 @@ AWS 클라우드 네이티브 기술을 활용한 AI 기반 채용 플랫폼 데
 ## 인프라 구성
 
 ### Container Orchestration (EKS + ECS DR)
-```
-                      ┌─────────────┐
-                      │     ALB     │
-                      │ Weighted TG │
-                      └──────┬──────┘
-               ┌─────────────┴─────────────┐
-               ▼                           ▼
-        ┌─────────────┐             ┌─────────────┐
-        │     EKS     │             │     ECS     │
-        │  (Primary)  │             │    (DR)     │
-        │   100%      │◄──switch───►│    0%       │
-        │  Karpenter  │             │  Managed    │
-        │    KEDA     │             │  Instance   │
-        └─────────────┘             └─────────────┘
+
+```mermaid
+flowchart TB
+    ALB["ALB<br/>Weighted Target Group"]
+
+    subgraph Primary["EKS (Primary)"]
+        EKS["EKS Cluster"]
+        KARPENTER["Karpenter<br/>노드 스케일링"]
+        KEDA["KEDA<br/>Pod 스케일링"]
+    end
+
+    subgraph DR["ECS (DR - Hot Standby)"]
+        ECS["ECS Cluster"]
+        MANAGED["Managed Instance<br/>최소 1개 상시"]
+    end
+
+    ALB -->|"100%"| EKS
+    ALB -.->|"0%"| ECS
+    EKS --- KARPENTER
+    EKS --- KEDA
+    ECS --- MANAGED
 ```
 
-- **EKS (Primary)**: Karpenter 노드 스케일링, KEDA Pod 스케일링
-- **ECS (DR - Hot Standby)**: Managed Instance, 최소 1개 상시 실행
-- **ALB Weighted Target Group**: Admin에서 DR 전환 시 가중치 변경
-- **전환 시나리오**: Normal(100:0) → DR(0:100) → Canary(90:10)
+| 모드 | EKS | ECS | 설명 |
+|------|-----|-----|------|
+| Normal | 100% | 0% | 평상시 운영 |
+| DR | 0% | 100% | 장애 전환 |
+| Canary | 90% | 10% | 점진적 복구 |
 
 ### Data Stores
 - **Aurora PostgreSQL**: 사용자, 채용공고, 지원 데이터
@@ -143,21 +157,60 @@ AWS 클라우드 네이티브 기술을 활용한 AI 기반 채용 플랫폼 데
   - ArgoCD를 통한 GitOps 배포
 
 ### GitOps (ArgoCD)
-K8s 워크로드는 ArgoCD를 통해 GitOps 방식으로 배포됩니다.
 
+```mermaid
+flowchart LR
+    subgraph Git["Git Repository"]
+        REPO["github.com/Atom-oh/<br/>aws-demo-application"]
+    end
+
+    subgraph ArgoCD["ArgoCD (App of Apps)"]
+        ROOT["root-app"]
+        KONG_APP["kong"]
+        PLUGINS["kong-plugins"]
+        HIREHUB["hirehub-services"]
+    end
+
+    subgraph AppSet["ApplicationSet"]
+        DEV["hirehub-dev"]
+        PROD["hirehub-prod"]
+    end
+
+    subgraph EKS["EKS Cluster"]
+        NS_KONG["namespace: kong"]
+        NS_DEV["namespace: hirehub-dev"]
+        NS_PROD["namespace: hirehub-prod"]
+    end
+
+    REPO --> ArgoCD
+    ROOT --> KONG_APP & PLUGINS & HIREHUB
+    KONG_APP --> NS_KONG
+    PLUGINS --> NS_KONG
+    DEV --> NS_DEV
+    PROD --> NS_PROD
 ```
-┌────────────────────────────────────────────────────────────────┐
-│                         ArgoCD                                  │
-│                    (App of Apps 패턴)                           │
-├────────────────────────────────────────────────────────────────┤
-│  root-app ──┬── kong (Helm: kong/kong)                         │
-│             ├── kong-plugins (KongClusterPlugin CRDs)          │
-│             └── hirehub-services (Helm: infrastructure/helm/)  │
-├────────────────────────────────────────────────────────────────┤
-│  ApplicationSet (hirehub-envs.yaml)                            │
-│    ├── hirehub-services-dev  (namespace: hirehub-dev)          │
-│    └── hirehub-services-prod (namespace: hirehub-prod)         │
-└────────────────────────────────────────────────────────────────┘
+
+```mermaid
+flowchart TB
+    subgraph IaC["Infrastructure as Code"]
+        TF["Terraform<br/>AWS 리소스"]
+        ARGO["ArgoCD<br/>K8s 워크로드"]
+    end
+
+    subgraph AWS["AWS Resources"]
+        VPC["VPC/Subnets"]
+        EKS_C["EKS Cluster"]
+        AURORA_C["Aurora"]
+        MSK_C["MSK"]
+    end
+
+    subgraph K8s["Kubernetes Workloads"]
+        KONG_W["Kong Gateway"]
+        SVC["HireHub Services"]
+    end
+
+    TF --> VPC & EKS_C & AURORA_C & MSK_C
+    ARGO --> KONG_W & SVC
 ```
 
 | 구분 | 도구 | 경로 |
@@ -209,40 +262,95 @@ demo/
 ## 핵심 시나리오
 
 ### 1. 이력서 업로드 → PII 제거 → AI 분석
-```
-1. 구직자가 이력서 PDF 업로드
-2. resume-service → S3 저장
-3. ai-service (QWEN3) → PII 마스킹 (이름→OOO, 전화→***-****-****)
-4. ai-service (RAG) → 이력서 벡터화 및 저장
-5. Kafka → notification-service → "이력서 분석 완료" 알림
+
+```mermaid
+sequenceDiagram
+    actor User as 구직자
+    participant Resume as resume-service
+    participant S3
+    participant AI as ai-service
+    participant QWEN as QWEN3 (sLLM)
+    participant KB as Bedrock KB
+    participant Kafka as MSK
+    participant Notify as notification-service
+
+    User->>Resume: 이력서 PDF 업로드
+    Resume->>S3: 원본 저장
+    Resume->>AI: PII 제거 요청
+    AI->>QWEN: 개인정보 마스킹
+    QWEN-->>AI: 마스킹된 텍스트
+    AI->>KB: 벡터화 & 저장 (RAG)
+    AI->>Kafka: 분석 완료 이벤트
+    Kafka->>Notify: 이벤트 수신
+    Notify-->>User: "이력서 분석 완료" 알림
 ```
 
 ### 2. 채용공고 등록 → AI 매칭 → 추천
-```
-1. 기업이 채용공고(JD) 등록
-2. job-service → OpenSearch 인덱싱
-3. match-service → 기존 이력서와 AI 매칭 (AgentCore)
-4. 적합 구직자에게 Kafka → 알림 발송
+
+```mermaid
+sequenceDiagram
+    actor Company as 기업
+    participant Job as job-service
+    participant OS as OpenSearch
+    participant Match as match-service
+    participant Agent as Bedrock AgentCore
+    participant Kafka as MSK
+    participant Notify as notification-service
+    actor User as 구직자
+
+    Company->>Job: 채용공고(JD) 등록
+    Job->>OS: 인덱싱
+    Job->>Match: 매칭 요청
+    Match->>Agent: AI 매칭 분석
+    Agent-->>Match: 적합 후보 목록
+    Match->>Kafka: 추천 이벤트
+    Kafka->>Notify: 이벤트 수신
+    Notify-->>User: "새로운 추천 공고" 알림
 ```
 
 ### 3. 지원 → 상태 추적 → 알림
-```
-1. 구직자가 채용공고에 지원
-2. apply-service → 지원 레코드 생성
-3. Kafka → notification-service → 기업에 알림
-4. 기업이 상태 변경 (서류검토→면접→합격)
-5. 각 단계마다 Kafka → 구직자에게 알림
+
+```mermaid
+sequenceDiagram
+    actor User as 구직자
+    participant Apply as apply-service
+    participant Kafka as MSK
+    participant Notify as notification-service
+    actor Company as 기업
+
+    User->>Apply: 채용공고 지원
+    Apply->>Kafka: 지원 이벤트
+    Kafka->>Notify: 이벤트 수신
+    Notify-->>Company: "새 지원자" 알림
+
+    loop 상태 변경
+        Company->>Apply: 상태 변경 (서류→면접→합격)
+        Apply->>Kafka: 상태 변경 이벤트
+        Kafka->>Notify: 이벤트 수신
+        Notify-->>User: 상태 변경 알림
+    end
 ```
 
 ### 4. DR 전환 (EKS → ECS)
-```
-1. Admin Dashboard에서 "DR 전환" 버튼 클릭
-2. Lambda → ALB Listener Rule 가중치 변경
-   - EKS Target Group: 100% → 0%
-   - ECS Target Group: 0% → 100%
-3. ECS Auto Scaling → 트래픽 증가에 따라 태스크 확장
-4. 모니터링: CloudWatch 대시보드에서 전환 상태 확인
-5. 복구 시: 역순으로 가중치 변경
+
+```mermaid
+sequenceDiagram
+    actor Admin as 관리자
+    participant Dashboard as Admin Dashboard
+    participant Lambda
+    participant ALB
+    participant EKS
+    participant ECS
+    participant CW as CloudWatch
+
+    Admin->>Dashboard: DR 전환 버튼 클릭
+    Dashboard->>Lambda: 전환 요청
+    Lambda->>ALB: Listener Rule 수정
+    Note over ALB: EKS 100%→0%<br/>ECS 0%→100%
+    ALB->>ECS: 트래픽 전환
+    ECS->>ECS: Auto Scaling (태스크 확장)
+    Lambda->>CW: 전환 메트릭 기록
+    CW-->>Admin: 대시보드 모니터링
 ```
 
 ---
