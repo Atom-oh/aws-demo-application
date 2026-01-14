@@ -1,0 +1,266 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: otel-collector
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+    chart: opentelemetry-collector
+    targetRevision: 0.108.0
+    helm:
+      releaseName: otel-collector
+      values: |
+        # DaemonSet mode for collecting from all nodes
+        mode: daemonset
+
+        # Use contrib image for additional exporters
+        image:
+          repository: otel/opentelemetry-collector-contrib
+          tag: 0.108.0
+
+        # Presets for Kubernetes
+        presets:
+          kubernetesAttributes:
+            enabled: true
+          logsCollection:
+            enabled: true
+            includeCollectorLogs: false
+
+        # Resources
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+
+        # OTEL Collector configuration
+        config:
+          receivers:
+            # OTLP receiver for application telemetry
+            otlp:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4317
+                http:
+                  endpoint: 0.0.0.0:4318
+
+            # Filelog receiver for container logs
+            filelog:
+              include:
+                - /var/log/pods/*/*/*.log
+              exclude:
+                - /var/log/pods/*/otel-collector*/*.log
+              start_at: end
+              include_file_path: true
+              include_file_name: false
+              operators:
+                - type: router
+                  id: get-format
+                  routes:
+                    - output: parser-docker
+                      expr: 'body matches "^\\{"'
+                    - output: parser-crio
+                      expr: 'body matches "^[^ Z]+ "'
+                    - output: parser-containerd
+                      expr: 'body matches "^[^ Z]+Z"'
+                - type: regex_parser
+                  id: parser-crio
+                  regex: '^(?P<time>[^ Z]+) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'
+                  output: extract_metadata_from_filepath
+                  timestamp:
+                    parse_from: attributes.time
+                    layout_type: gotime
+                    layout: '2006-01-02T15:04:05.999999999Z07:00'
+                - type: regex_parser
+                  id: parser-containerd
+                  regex: '^(?P<time>[^ ^Z]+Z) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'
+                  output: extract_metadata_from_filepath
+                  timestamp:
+                    parse_from: attributes.time
+                    layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+                - type: json_parser
+                  id: parser-docker
+                  output: extract_metadata_from_filepath
+                  timestamp:
+                    parse_from: attributes.time
+                    layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+                - type: regex_parser
+                  id: extract_metadata_from_filepath
+                  regex: '^.*\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<uid>[a-f0-9\-]+)\/(?P<container_name>[^\._]+)\/(?P<restart_count>\d+)\.log$'
+                  parse_from: attributes["log.file.path"]
+                  cache:
+                    size: 128
+                - type: move
+                  from: attributes.log
+                  to: body
+                - type: move
+                  from: attributes.stream
+                  to: attributes["log.iostream"]
+                - type: move
+                  from: attributes.container_name
+                  to: resource["k8s.container.name"]
+                - type: move
+                  from: attributes.namespace
+                  to: resource["k8s.namespace.name"]
+                - type: move
+                  from: attributes.pod_name
+                  to: resource["k8s.pod.name"]
+                - type: move
+                  from: attributes.restart_count
+                  to: resource["k8s.container.restart_count"]
+                - type: move
+                  from: attributes.uid
+                  to: resource["k8s.pod.uid"]
+
+          processors:
+            # Batch processor
+            batch:
+              timeout: 10s
+              send_batch_size: 1024
+
+            # Memory limiter
+            memory_limiter:
+              check_interval: 1s
+              limit_mib: 400
+              spike_limit_mib: 100
+
+            # Resource detection
+            resourcedetection:
+              detectors: [env, system]
+              timeout: 5s
+
+            # K8s attributes enrichment
+            k8sattributes:
+              auth_type: "serviceAccount"
+              passthrough: false
+              extract:
+                metadata:
+                  - k8s.namespace.name
+                  - k8s.deployment.name
+                  - k8s.statefulset.name
+                  - k8s.daemonset.name
+                  - k8s.cronjob.name
+                  - k8s.job.name
+                  - k8s.node.name
+                  - k8s.pod.name
+                  - k8s.pod.uid
+                  - k8s.pod.start_time
+                labels:
+                  - tag_name: app
+                    key: app
+                    from: pod
+                  - tag_name: app.kubernetes.io/name
+                    key: app.kubernetes.io/name
+                    from: pod
+              pod_association:
+                - sources:
+                    - from: resource_attribute
+                      name: k8s.pod.ip
+                - sources:
+                    - from: resource_attribute
+                      name: k8s.pod.uid
+                - sources:
+                    - from: connection
+
+          exporters:
+            # Debug exporter (for troubleshooting)
+            debug:
+              verbosity: basic
+
+            # Loki exporter for logs
+            otlphttp/loki:
+              endpoint: http://loki-gateway.monitoring.svc.cluster.local:3100/otlp
+              tls:
+                insecure: true
+
+            # Tempo exporter for traces
+            otlp/tempo:
+              endpoint: tempo-distributor.monitoring.svc.cluster.local:4317
+              tls:
+                insecure: true
+
+            # Mimir exporter for metrics
+            prometheusremotewrite/mimir:
+              endpoint: http://mimir-nginx.monitoring.svc.cluster.local:80/api/v1/push
+              tls:
+                insecure: true
+
+            # ClickHouse exporter for logs
+            clickhouse:
+              endpoint: tcp://clickhouse.monitoring.svc.cluster.local:9000
+              database: otel
+              logs_table_name: logs
+              traces_table_name: traces
+              username: admin
+              password: clickhouse123
+              ttl: 168h
+              create_schema: false
+
+          service:
+            pipelines:
+              # Logs pipeline - fan out to Loki, ClickHouse
+              logs:
+                receivers: [otlp, filelog]
+                processors: [memory_limiter, k8sattributes, batch]
+                exporters: [otlphttp/loki, clickhouse]
+
+              # Traces pipeline - fan out to Tempo, ClickHouse
+              traces:
+                receivers: [otlp]
+                processors: [memory_limiter, k8sattributes, batch]
+                exporters: [otlp/tempo, clickhouse]
+
+              # Metrics pipeline - to Mimir
+              metrics:
+                receivers: [otlp]
+                processors: [memory_limiter, batch]
+                exporters: [prometheusremotewrite/mimir]
+
+        # Service account for k8s attributes
+        serviceAccount:
+          create: true
+
+        # ClusterRole for k8s attributes
+        clusterRole:
+          create: true
+          rules:
+            - apiGroups: [""]
+              resources: ["pods", "namespaces", "nodes"]
+              verbs: ["get", "watch", "list"]
+            - apiGroups: ["apps"]
+              resources: ["replicasets", "deployments", "statefulsets", "daemonsets"]
+              verbs: ["get", "watch", "list"]
+            - apiGroups: ["batch"]
+              resources: ["jobs", "cronjobs"]
+              verbs: ["get", "watch", "list"]
+
+        # Ports
+        ports:
+          otlp:
+            enabled: true
+            containerPort: 4317
+            servicePort: 4317
+            protocol: TCP
+          otlp-http:
+            enabled: true
+            containerPort: 4318
+            servicePort: 4318
+            protocol: TCP
+
+  destination:
+    name: in-cluster
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

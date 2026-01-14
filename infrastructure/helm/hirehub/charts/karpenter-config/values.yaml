@@ -1,0 +1,46 @@
+# Karpenter Configuration Values
+
+clusterName: demo-hirehub-eks
+
+# NodePool Configuration
+nodePool:
+  name: default
+  limits:
+    cpu: 100
+    memory: 200Gi
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 30s
+
+# EC2NodeClass Configuration
+ec2NodeClass:
+  name: default
+  amiFamily: AL2023
+  instanceProfile: KarpenterNodeInstanceProfile-demo-hirehub-eks
+  subnetSelectorTags:
+    karpenter.sh/discovery: demo-hirehub-eks
+  securityGroupSelectorTags:
+    karpenter.sh/discovery: demo-hirehub-eks
+
+  # Block device mappings
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 50Gi
+        volumeType: gp3
+        encrypted: true
+        deleteOnTermination: true
+
+  # Instance requirements
+  requirements:
+    capacityTypes:
+      - spot
+      - on-demand
+    instanceCategories:
+      - m
+      - c
+      - r
+    instanceSizes:
+      - large
+      - xlarge
+      - 2xlarge

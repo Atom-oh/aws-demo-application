@@ -23,7 +23,7 @@ spec:
     # Only include application manifests (exclude root-app itself to avoid recursion issues)
     directory:
       recurse: false
-      include: '{kong.yaml,kong-plugins.yaml,hirehub.yaml}'
+      include: '{alb-controller.yaml,kong.yaml,kong-plugins.yaml,hirehub.yaml,hirehub-services.yaml,karpenter.yaml,keda.yaml,observability.yaml}'
 
   # Destination cluster and namespace
   destination:

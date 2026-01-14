@@ -6,6 +6,43 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **HireHub** - AWS 클라우드 네이티브 기술을 활용한 AI 기반 채용 플랫폼 데모
 
+## Demo Completion Status (2026-01-12)
+
+### ✅ Completed Components
+| Component | Status | Details |
+|-----------|--------|---------|
+| **EKS Cluster** | ✅ v1.34 | AL2023, Pod Identity, 2 nodes |
+| **Docker Images** | ✅ 7/7 | All services built & pushed to ECR |
+| **ArgoCD** | ✅ Deployed | Kong application configured |
+| **Kong Gateway** | ✅ Running | Internal NLB |
+| **RAG API** | ✅ Complete | `/api/v1/rag/query`, `/index`, `/delete` |
+| **PII Service** | ✅ Complete | QWEN3 sLLM integration |
+| **AgentCore** | ✅ Complete | Bedrock Agent integration |
+| **Observability** | ✅ LGTM Stack | Loki, Grafana, Tempo, Mimir + ClickHouse |
+| **Karpenter** | ✅ ArgoCD App | Node auto-scaling ready |
+| **KEDA** | ✅ ArgoCD App | Pod event-driven scaling ready |
+| **DR Failover** | ✅ Terraform | Lambda + ALB weighted routing |
+
+### Infrastructure Versions
+| Component | Version |
+|-----------|---------|
+| EKS | **1.34** (latest) |
+| Node AMI | AL2023_x86_64_STANDARD |
+| kube-proxy | v1.34.1-eksbuild.2 |
+| vpc-cni | v1.21.1-eksbuild.1 |
+| coredns | v1.12.4-eksbuild.1 |
+| Terraform AWS Provider | >= 6.0 |
+
+### ECR Repositories
+All 7 services have images in ECR:
+- `hirehub/user-service` ✅
+- `hirehub/job-service` ✅
+- `hirehub/resume-service` ✅
+- `hirehub/apply-service` ✅
+- `hirehub/match-service` ✅
+- `hirehub/ai-service` ✅
+- `hirehub/notification-service` ✅
+
 ## Architecture
 
 ### Services (gRPC + mTLS)
@@ -30,9 +67,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Messaging**: MSK (Kafka)
 - **Auth**: Cognito + 소셜 로그인
 - **API Gateway**: Kong (Rate Limiting, Circuit Breaker, Auth) - Internal NLB
-- **GitOps**: ArgoCD (App of Apps pattern)
+- **GitOps**: ArgoCD (EKS Managed Capability + AWS Identity Center SSO)
 - **IAM**: Pod Identity (preferred over IRSA)
 - **Security**: CloudFront + Prefix-list SG for external access
+- **LB Controller**: AWS Load Balancer Controller (Pod Identity)
 
 ### Deployment Strategy
 | Layer | Tool | Description |
@@ -41,19 +79,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | EKS Addons | Terraform | EKS Blueprint addons |
 | K8s 워크로드 (Kong, Services) | ArgoCD | `infrastructure/argocd/` |
 
-### ArgoCD Structure
+### ArgoCD (EKS Managed Capability)
+- **배포 방식**: EKS Capability (Terraform `aws_eks_capability`)
+- **인증**: AWS Identity Center (SSO) 연동 필수
+- **접속 URL**: https://argocd.aws.atomai.click (CloudFront → EKS Capability)
+- **노드 리소스**: 사용 안 함 (EKS 컨트롤 플레인에서 실행)
+
 ```
 infrastructure/argocd/
-├── install/              # ArgoCD Helm values
+├── install/              # (Legacy) ArgoCD Helm values - 참조용
 ├── projects/             # AppProject (hirehub)
 ├── applications/         # Application manifests
 │   ├── root-app.yaml     # App of Apps root
+│   ├── alb-controller.yaml # AWS Load Balancer Controller
 │   ├── kong.yaml         # Kong API Gateway
 │   ├── kong-plugins.yaml # Kong plugins
 │   └── hirehub.yaml      # HireHub services
 ├── applicationsets/      # Multi-env deployment
 │   └── hirehub-envs.yaml # dev/prod ApplicationSet
-└── kong-plugins/         # Kong CRD manifests
+└── kong-plugins/         # Kong CRD manifests + API routes
 ```
 
 ## Development Commands
@@ -115,17 +159,17 @@ proto/
 ## Deployment Commands
 
 ```bash
-# Terraform 배포 (AWS 리소스)
+# Terraform 배포 (AWS 리소스 + EKS ArgoCD Capability)
 cd infrastructure/terraform/deploy
 terraform init
 terraform plan
 terraform apply
 
-# ArgoCD 설치 (EKS에서 한번만)
-kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+# ArgoCD 접속 (EKS Managed - AWS Identity Center SSO로 로그인)
+# URL: https://argocd.aws.atomai.click
+# 또는 직접 접속: terraform output argocd_server_url
 
-# ArgoCD Applications 배포
+# ArgoCD Applications 배포 (ArgoCD UI 또는 kubectl)
 kubectl apply -f infrastructure/argocd/applications/
 
 # Docker 이미지 빌드 및 푸시
@@ -133,6 +177,9 @@ kubectl apply -f infrastructure/argocd/applications/
 
 # EKS kubeconfig 설정
 aws eks update-kubeconfig --name demo-hirehub-eks --region ap-northeast-2
+
+# EKS 클러스터 인증 모드 확인 (API_AND_CONFIG_MAP 필요)
+aws eks describe-cluster --name demo-hirehub-eks --query 'cluster.accessConfig'
 ```
 
 ## Security Guidelines
@@ -148,13 +195,82 @@ aws eks update-kubeconfig --name demo-hirehub-eks --region ap-northeast-2
 - 서비스별 최소 권한 원칙 적용
 - Secrets는 AWS Secrets Manager 또는 Kubernetes Secrets (sealed) 사용
 
-### EKS Addons
-| Addon | Description |
-|-------|-------------|
+### EKS Addons & Capabilities
+| Addon/Capability | Description |
+|------------------|-------------|
 | eks-pod-identity-agent | Pod Identity 지원 |
 | vpc-cni | VPC 네이티브 네트워킹 |
 | coredns | DNS 서비스 |
 | kube-proxy | 네트워크 프록시 |
+| **ArgoCD Capability** | EKS Managed GitOps (AWS Identity Center 연동) |
+| **AWS LB Controller** | NLB/ALB 관리 (Pod Identity 사용) |
+
+## Observability Stack (LGTM + Multi-Backend)
+
+### Architecture
+```
+┌──────────────────────────────────────────────────────────┐
+│                    EKS Cluster                            │
+│  ┌─────────────────────────────────────────────────┐     │
+│  │           OTEL Collector (DaemonSet)            │     │
+│  │    Receivers: OTLP, filelog (container logs)    │     │
+│  └──────┬──────────┬──────────┬──────────┬─────────┘     │
+│         │          │          │          │               │
+│         ▼          ▼          ▼          ▼               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐    │
+│  │  Loki    │ │  Tempo   │ │  Mimir   │ │ClickHouse│    │
+│  │ (Logs)   │ │ (Traces) │ │(Metrics) │ │(SQL Logs)│    │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘    │
+│         └──────────┴──────────┴──────────┘               │
+│                         │                                │
+│                   ┌─────▼─────┐                          │
+│                   │  Grafana  │                          │
+│                   │(5 sources)│                          │
+│                   └───────────┘                          │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Components
+| Component | Mode | Purpose | Query Language |
+|-----------|------|---------|----------------|
+| **Loki** | SimpleScalable | Real-time logs | LogQL |
+| **Tempo** | Distributed | Distributed tracing | TraceQL |
+| **Mimir** | Distributed | Long-term metrics | PromQL |
+| **ClickHouse** | Single node | SQL log analytics | SQL |
+| **Grafana** | Single | Unified visualization | - |
+| **OTEL Collector** | DaemonSet | Telemetry collection | - |
+
+### ArgoCD Applications
+```
+infrastructure/argocd/applications/
+├── loki.yaml              # Loki SimpleScalable
+├── tempo.yaml             # Tempo Distributed
+├── mimir.yaml             # Mimir Distributed
+├── clickhouse.yaml        # ClickHouse single node
+├── otel-collector.yaml    # OTEL Collector DaemonSet
+└── grafana-lgtm.yaml      # Grafana + All Datasources
+```
+
+### Grafana Datasources
+| Datasource | Type | Usage |
+|------------|------|-------|
+| Loki | Built-in | Real-time log search, LogQL |
+| Tempo | Built-in | Trace visualization, TraceQL |
+| Mimir | prometheus | Long-term metrics, PromQL |
+| ClickHouse | Plugin | SQL-based log analytics |
+| OpenSearch | Plugin | Full-text search (AWS Managed) |
+
+### Access
+```bash
+# Grafana (port-forward)
+kubectl port-forward svc/grafana -n monitoring 3000:3000
+# URL: http://localhost:3000
+# User: admin / Password: grafana123
+
+# Sample Queries
+# Loki: {namespace="kong"} |= "request"
+# ClickHouse: SELECT * FROM otel.logs WHERE ServiceName='kong' LIMIT 10
+```
 
 ## Documentation
 

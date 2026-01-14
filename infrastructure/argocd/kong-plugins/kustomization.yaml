@@ -9,12 +9,13 @@ metadata:
     app.kubernetes.io/name: kong-plugins
     app.kubernetes.io/part-of: hirehub
 
-# Plugin manifests
+# Plugin manifests and API routes
 resources:
   - rate-limiting.yaml
   - cors.yaml
   - jwt-auth.yaml
   - request-termination.yaml
+  - api-routes.yaml
 
 # Common labels for all resources
 commonLabels:

@@ -1,0 +1,62 @@
+# ArgoCD AppProject for Infrastructure Components
+# Kong, ALB Controller, Karpenter, KEDA 등 인프라 컴포넌트용 프로젝트
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: infra
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Infrastructure components for HireHub platform
+
+  # Source repositories
+  sourceRepos:
+    - '*'
+
+  # Destination clusters and namespaces
+  # EKS managed ArgoCD: use server: '*' (wildcard) as default project does
+  destinations:
+    # Kong API Gateway
+    - namespace: kong
+      server: '*'
+
+    # Kubernetes system components
+    - namespace: kube-system
+      server: '*'
+
+    # KEDA namespace
+    - namespace: keda
+      server: '*'
+
+    # Monitoring stack
+    - namespace: monitoring
+      server: '*'
+
+    # ArgoCD self-management
+    - namespace: argocd
+      server: '*'
+
+  # Cluster-scoped resources allowed
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
+  # Namespace-scoped resources allowed
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
+  # Orphaned resources monitoring
+  orphanedResources:
+    warn: true
+    ignore: []
+
+  # RBAC roles
+  roles:
+    - name: admin
+      description: Admin access to infra project
+      policies:
+        - p, proj:infra:admin, applications, *, infra/*, allow
+      groups:
+        - infra-admins

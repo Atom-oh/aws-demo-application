@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
+	"github.com/aws/aws-sdk-go-v2/service/sns/types"
 )
 
 // SMSSender sends SMS messages via AWS SNS
@@ -45,7 +46,7 @@ func (s *SMSSender) Send(ctx context.Context, phoneNumber, message string) error
 	input := &sns.PublishInput{
 		PhoneNumber: aws.String(phoneNumber),
 		Message:     aws.String(message),
-		MessageAttributes: map[string]sns.MessageAttributeValue{
+		MessageAttributes: map[string]types.MessageAttributeValue{
 			"AWS.SNS.SMS.SMSType": {
 				DataType:    aws.String("String"),
 				StringValue: aws.String("Transactional"),
@@ -96,7 +97,7 @@ func (s *SMSSender) SendToTopic(ctx context.Context, topicArn, message string) e
 	input := &sns.PublishInput{
 		TopicArn: aws.String(topicArn),
 		Message:  aws.String(message),
-		MessageAttributes: map[string]sns.MessageAttributeValue{
+		MessageAttributes: map[string]types.MessageAttributeValue{
 			"AWS.SNS.SMS.SMSType": {
 				DataType:    aws.String("String"),
 				StringValue: aws.String("Transactional"),

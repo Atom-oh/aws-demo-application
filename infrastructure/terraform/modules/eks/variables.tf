@@ -24,7 +24,7 @@ variable "private_subnet_ids" {
 variable "cluster_version" {
   description = "Kubernetes version"
   type        = string
-  default     = "1.29"
+  default     = "1.34"
 }
 
 variable "endpoint_public_access" {
@@ -43,6 +43,12 @@ variable "kms_key_arn" {
   description = "KMS key ARN for encryption (creates new if null)"
   type        = string
   default     = null
+}
+
+variable "ami_type" {
+  description = "AMI type for the node group (AL2_x86_64, AL2023_x86_64_STANDARD, etc.)"
+  type        = string
+  default     = "AL2023_x86_64_STANDARD"
 }
 
 variable "node_instance_types" {

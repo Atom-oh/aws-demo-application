@@ -1,4 +1,21 @@
-# ArgoCD Helm Values for HireHub Platform
+# =============================================================================
+# DEPRECATED: Self-managed ArgoCD Helm Values
+# =============================================================================
+# This file is kept for reference only.
+#
+# HireHub now uses EKS ArgoCD Capability (fully managed by AWS):
+# - Terraform: infrastructure/terraform/modules/eks-argocd/
+# - No node resources required (runs in EKS control plane)
+# - AWS Identity Center (SSO) integration
+# - Automatic updates and scaling by AWS
+#
+# To use EKS ArgoCD Capability, see prod/main.tf:
+#   module "eks_argocd" { ... }
+#
+# For legacy self-managed deployment, see below:
+# =============================================================================
+
+# ArgoCD Helm Values for HireHub Platform (Legacy/Reference)
 # Reference: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
 # Chart: argo/argo-cd
 

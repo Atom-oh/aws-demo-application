@@ -17,23 +17,23 @@ spec:
   sourceRepos:
     - '*'
 
-  # Destination clusters and namespaces
+  # Destination clusters and namespaces (use cluster name for EKS ArgoCD Capability)
   destinations:
     # HireHub microservices namespaces (multi-environment)
     - namespace: hirehub
-      server: https://kubernetes.default.svc
+      name: in-cluster
     - namespace: hirehub-dev
-      server: https://kubernetes.default.svc
+      name: in-cluster
     - namespace: hirehub-prod
-      server: https://kubernetes.default.svc
+      name: in-cluster
 
     # Kong API Gateway namespace
     - namespace: kong
-      server: https://kubernetes.default.svc
+      name: in-cluster
 
     # ArgoCD namespace (for self-management)
     - namespace: argocd
-      server: https://kubernetes.default.svc
+      name: in-cluster
 
   # Cluster-scoped resources allowed to be deployed
   clusterResourceWhitelist:

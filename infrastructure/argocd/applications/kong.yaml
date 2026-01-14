@@ -13,8 +13,8 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  # Project reference
-  project: hirehub
+  # Project reference (EKS managed ArgoCD: use default project)
+  project: default
 
   # Source configuration - Kong Helm chart
   source:
@@ -30,6 +30,8 @@ spec:
         ingressController:
           enabled: true
           installCRDs: false  # CRDs managed separately
+          admissionWebhook:
+            enabled: false  # Disable ValidatingWebhookConfiguration
           env:
             kong_admin_token:
               valueFrom:
@@ -43,8 +45,7 @@ spec:
         # ===========================================
         env:
           database: "off"
-          # Declarative config via ConfigMaps/CRDs
-          declarative_config: /kong_dbless/kong.yml
+          # Kong Ingress Controller uses CRDs, no declarative config file needed
           # Proxy settings
           proxy_access_log: /dev/stdout
           proxy_error_log: /dev/stderr
@@ -204,17 +205,16 @@ spec:
           allowPrivilegeEscalation: false
 
         # ===========================================
-        # DB-less Config Mount (empty for CRD-based config)
+        # DB-less Config - Using Kong Ingress Controller CRDs
         # ===========================================
+        # When using Kong Ingress Controller, configuration comes from
+        # Kubernetes CRDs (KongPlugin, KongIngress, etc.), not dblessConfig
         dblessConfig:
-          configMap: ""
-          config: |
-            _format_version: "3.0"
-            _transform: true
+          config: ""
 
-  # Destination
+  # Destination (EKS ArgoCD Capability: use 'name: in-cluster')
   destination:
-    server: https://kubernetes.default.svc
+    name: in-cluster
     namespace: kong
 
   # Sync policy
@@ -244,3 +244,15 @@ spec:
       kind: Service
       jsonPointers:
         - /metadata/annotations/service.beta.kubernetes.io~1aws-load-balancer-target-group-attributes
+    # Ignore dynamically generated secrets (CA keypairs, TLS certs)
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+    # Ignore caBundle in ValidatingWebhookConfiguration (injected by cert-manager/controller)
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+        - /webhooks/1/clientConfig/caBundle
+        - /webhooks/2/clientConfig/caBundle

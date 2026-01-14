@@ -1,0 +1,95 @@
+# AWS Load Balancer Controller ArgoCD Application
+# Deploys AWS Load Balancer Controller for NLB/ALB management
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aws-load-balancer-controller
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: hirehub-platform
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://aws.github.io/eks-charts
+    chart: aws-load-balancer-controller
+    targetRevision: 1.11.0  # Latest stable version
+    helm:
+      releaseName: aws-load-balancer-controller
+      values: |
+        clusterName: demo-hirehub-eks
+        region: ap-northeast-2
+        vpcId: vpc-09c4e7b372fd21fe1
+
+        # Pod Identity - IAM role is associated via EKS Pod Identity
+        serviceAccount:
+          create: true
+          name: aws-load-balancer-controller
+          annotations: {}  # Pod Identity doesn't need annotations
+
+        # High availability settings
+        replicaCount: 2
+
+        # Resource limits
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+
+        # Pod disruption budget
+        podDisruptionBudget:
+          maxUnavailable: 1
+
+        # Enable service monitor for Prometheus
+        serviceMonitor:
+          enabled: false  # Enable if Prometheus Operator is installed
+
+        # Ingress class configuration
+        ingressClass: alb
+        createIngressClassResource: true
+
+        # Enable WAFv2 support
+        enableWaf: true
+        enableWafv2: true
+        enableShield: true
+
+        # Logging
+        logLevel: info
+
+        # Webhook configuration
+        webhookTLS:
+          caCert: ""
+          cert: ""
+          key: ""
+
+  destination:
+    name: in-cluster
+    namespace: kube-system
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=false
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Health checks
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      name: aws-load-balancer-tls
+      jsonPointers:
+        - /data

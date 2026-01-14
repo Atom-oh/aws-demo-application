@@ -1,0 +1,152 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mimir
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: mimir-distributed
+    targetRevision: 5.6.0
+    helm:
+      releaseName: mimir
+      values: |
+        # Mimir configuration
+        mimir:
+          structuredConfig:
+            # Multi-tenancy disabled for demo
+            multitenancy_enabled: false
+
+            # Limits
+            limits:
+              max_global_series_per_user: 1000000
+              ingestion_rate: 100000
+              ingestion_burst_size: 200000
+
+            # Storage - using Loki's MinIO
+            common:
+              storage:
+                backend: s3
+                s3:
+                  endpoint: loki-minio.monitoring.svc.cluster.local:9000
+                  bucket_name: mimir-blocks
+                  access_key_id: enterprise-logs
+                  secret_access_key: supersecret
+                  insecure: true
+
+            # Blocks storage
+            blocks_storage:
+              backend: s3
+              s3:
+                bucket_name: mimir-blocks
+
+        # Distributor
+        distributor:
+          replicas: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+
+        # Ingester
+        ingester:
+          replicas: 2
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 256Mi
+          persistentVolume:
+            enabled: true
+            size: 10Gi
+          zoneAwareReplication:
+            enabled: false
+
+        # Querier
+        querier:
+          replicas: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+
+        # Query Frontend
+        query_frontend:
+          replicas: 1
+          resources:
+            limits:
+              cpu: 300m
+              memory: 256Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+
+        # Store Gateway
+        store_gateway:
+          replicas: 1
+          resources:
+            limits:
+              cpu: 300m
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          persistentVolume:
+            enabled: true
+            size: 5Gi
+          zoneAwareReplication:
+            enabled: false
+
+        # Compactor
+        compactor:
+          replicas: 1
+          resources:
+            limits:
+              cpu: 300m
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          persistentVolume:
+            enabled: true
+            size: 10Gi
+
+        # Ruler (disabled for demo)
+        ruler:
+          enabled: false
+
+        # Alertmanager (disabled for demo)
+        alertmanager:
+          enabled: false
+
+        # Nginx gateway
+        nginx:
+          enabled: true
+          replicas: 1
+
+        # MinIO disabled - using Loki's MinIO
+        minio:
+          enabled: false
+
+  destination:
+    name: in-cluster
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

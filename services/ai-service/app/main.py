@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import pii, embedding, analysis
+from app.api.routes import pii, embedding, analysis, rag
 from app.core.config import settings
 from app.core.database import engine, Base
 
@@ -41,6 +41,7 @@ app.add_middleware(
 app.include_router(pii.router, prefix="/api/v1/pii", tags=["PII"])
 app.include_router(embedding.router, prefix="/api/v1/embedding", tags=["Embedding"])
 app.include_router(analysis.router, prefix="/api/v1/analysis", tags=["Analysis"])
+app.include_router(rag.router, prefix="/api/v1/rag", tags=["RAG"])
 
 
 @app.get("/health")

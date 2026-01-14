@@ -1,0 +1,133 @@
+# KEDA Event-Driven Pod Autoscaler Application
+# Enables scaling based on external metrics (Kafka, SQS, HTTP, etc.)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keda
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: keda
+    app.kubernetes.io/part-of: hirehub
+    app.kubernetes.io/component: autoscaler
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: hirehub
+
+  source:
+    repoURL: https://kedacore.github.io/charts
+    chart: keda
+    targetRevision: 2.14.0
+    helm:
+      releaseName: keda
+      values: |
+        # ===========================================
+        # KEDA Operator Configuration
+        # ===========================================
+        operator:
+          replicaCount: 2
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          # Pod disruption budget
+          podDisruptionBudget:
+            enabled: true
+            minAvailable: 1
+
+        # ===========================================
+        # Metrics Server Configuration
+        # ===========================================
+        metricsServer:
+          replicaCount: 1
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+
+        # ===========================================
+        # Admission Webhooks
+        # ===========================================
+        webhooks:
+          enabled: true
+          replicaCount: 1
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+
+        # ===========================================
+        # Service Account (for MSK/AWS integration)
+        # ===========================================
+        serviceAccount:
+          create: true
+          name: keda-operator
+          annotations:
+            eks.amazonaws.com/role-association: arn:aws:iam::180294183052:role/keda-operator-demo-hirehub-eks
+
+        # ===========================================
+        # Prometheus Integration
+        # ===========================================
+        prometheus:
+          metricServer:
+            enabled: true
+            port: 8080
+          operator:
+            enabled: true
+            port: 8080
+
+        # ServiceMonitor for Prometheus
+        podMonitor:
+          enabled: true
+          namespace: keda
+          additionalLabels:
+            release: prometheus
+
+        # ===========================================
+        # Logging
+        # ===========================================
+        logging:
+          operator:
+            level: info
+          metricServer:
+            level: 0
+          webhooks:
+            level: info
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: keda
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+        - /webhooks/1/clientConfig/caBundle

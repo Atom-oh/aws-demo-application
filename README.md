@@ -2,6 +2,81 @@
 
 AWS 클라우드 네이티브 기술을 활용한 AI 기반 채용 플랫폼 데모 애플리케이션
 
+---
+
+## 🚀 데모 현황 (Demo Status)
+
+> **Last Updated:** 2026-01-12
+
+### 배포 완료 인프라
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    HireHub Demo Infrastructure                   │
+├─────────────────────────────────────────────────────────────────┤
+│  EKS Cluster: demo-hirehub-eks (v1.34, AL2023)                  │
+│  ├── Nodes: 2x t3.medium (Spot)                                 │
+│  ├── ArgoCD: Deployed (Kong app configured)                     │
+│  ├── Kong Gateway: Running (Internal NLB)                       │
+│  └── Add-ons: kube-proxy, vpc-cni, coredns (latest)             │
+├─────────────────────────────────────────────────────────────────┤
+│  ECR Images: 7/7 services built                                 │
+│  ├── user-service (Go)          ✅                              │
+│  ├── job-service (Java)         ✅                              │
+│  ├── resume-service (Python)    ✅                              │
+│  ├── apply-service (Go)         ✅                              │
+│  ├── match-service (Python)     ✅                              │
+│  ├── ai-service (Python)        ✅                              │
+│  └── notification-service (Go)  ✅                              │
+├─────────────────────────────────────────────────────────────────┤
+│  AI/ML Features                                                 │
+│  ├── RAG API: /api/v1/rag/query, /index, /delete               │
+│  ├── PII Removal: QWEN3 sLLM integration                       │
+│  └── AgentCore: Bedrock Agent matching                         │
+├─────────────────────────────────────────────────────────────────┤
+│  ArgoCD Applications (Ready to Deploy)                          │
+│  ├── observability (kube-prometheus-stack)                      │
+│  ├── karpenter (Node auto-scaling)                              │
+│  └── keda (Event-driven pod scaling)                            │
+├─────────────────────────────────────────────────────────────────┤
+│  DR Infrastructure                                              │
+│  ├── Lambda Failover Function (Terraform module)               │
+│  └── ALB Weighted Target Groups                                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 버전 정보
+
+| Component | Version | Note |
+|-----------|---------|------|
+| EKS | **1.34** | Latest (2026-01) |
+| Node AMI | AL2023 | Amazon Linux 2023 |
+| Kubernetes | v1.34.2-eks | Nodes |
+| kube-proxy | v1.34.1 | Add-on |
+| vpc-cni | v1.21.1 | Add-on |
+| coredns | v1.12.4 | Add-on |
+| containerd | 2.1.5 | Runtime |
+| Terraform AWS | >= 6.0 | Provider |
+
+### 접속 정보
+
+```bash
+# EKS kubeconfig 설정
+aws eks update-kubeconfig --name demo-hirehub-eks --region ap-northeast-2
+
+# 클러스터 상태 확인
+kubectl get nodes
+kubectl get pods -A
+
+# ArgoCD 접속 (Port Forward)
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+# URL: https://localhost:8080
+# Username: admin
+# Password: kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d
+```
+
+---
+
 ## 주요 기능
 
 | 기능 | 설명 |
@@ -219,6 +294,346 @@ flowchart TB
 | EKS Addons | Terraform | EKS Blueprint addons |
 | K8s 워크로드 | ArgoCD | `infrastructure/argocd/` |
 | Helm Charts | Helm | `infrastructure/helm/` |
+
+---
+
+## 학습 토픽 (Learning Topics)
+
+이 프로젝트에서 학습할 수 있는 AWS 클라우드 네이티브 기술들:
+
+### 1. Advanced RAG (Retrieval-Augmented Generation)
+
+```mermaid
+flowchart LR
+    subgraph Input["입력"]
+        PDF["이력서 PDF"]
+        JD["채용공고 JD"]
+    end
+
+    subgraph Processing["처리"]
+        CHUNK["청킹<br/>Semantic Chunking"]
+        EMBED["임베딩<br/>Titan Embeddings"]
+        INDEX["인덱싱<br/>OpenSearch"]
+    end
+
+    subgraph Query["질의"]
+        SEARCH["벡터 검색<br/>k-NN"]
+        RERANK["리랭킹<br/>Cohere Rerank"]
+        GEN["생성<br/>Claude 3"]
+    end
+
+    PDF --> CHUNK --> EMBED --> INDEX
+    JD --> SEARCH --> RERANK --> GEN
+    INDEX -.-> SEARCH
+```
+
+| 구성요소 | 기술 | 설명 |
+|---------|------|------|
+| 벡터 DB | OpenSearch + k-NN | 이력서 임베딩 저장/검색 |
+| 임베딩 | Amazon Titan | 텍스트 → 벡터 변환 |
+| Knowledge Base | Bedrock KB | 관리형 RAG 파이프라인 |
+| 청킹 전략 | Semantic Chunking | 의미 단위 분할 |
+
+**학습 포인트:**
+- 청크 크기와 오버랩 최적화
+- 하이브리드 검색 (키워드 + 벡터)
+- 컨텍스트 윈도우 활용 전략
+
+### 2. LLM 기반 PII 제거 (sLLM)
+
+```mermaid
+flowchart LR
+    subgraph Input["원본"]
+        RAW["이력서 텍스트<br/>이름: 김철수<br/>연락처: 010-1234-5678"]
+    end
+
+    subgraph Processing["QWEN3 처리"]
+        DETECT["개인정보 탐지"]
+        MASK["마스킹 처리"]
+    end
+
+    subgraph Output["결과"]
+        CLEAN["마스킹된 텍스트<br/>이름: ***<br/>연락처: ***-****-****"]
+    end
+
+    RAW --> DETECT --> MASK --> CLEAN
+```
+
+| 구성요소 | 기술 | 설명 |
+|---------|------|------|
+| 모델 | QWEN3-7B | 한국어 PII 탐지 최적화 |
+| 서빙 | vLLM on EKS | GPU 추론 서버 |
+| 탐지 대상 | 이름, 연락처, 주민번호, 주소 | 한국 개인정보보호법 준수 |
+
+**학습 포인트:**
+- sLLM vs API 기반 LLM 비용/성능 비교
+- vLLM 배치 추론 최적화
+- 프롬프트 엔지니어링 (Few-shot, CoT)
+
+### 3. MSA 아키텍처 with EKS
+
+```mermaid
+flowchart TB
+    subgraph Gateway["API Gateway"]
+        KONG["Kong<br/>Rate Limit | Auth | Circuit Breaker"]
+    end
+
+    subgraph Services["Microservices"]
+        direction LR
+        SVC1["user-service<br/>Go"]
+        SVC2["job-service<br/>Java"]
+        SVC3["ai-service<br/>Python"]
+    end
+
+    subgraph Communication["통신"]
+        GRPC["gRPC + mTLS"]
+        KAFKA["MSK Kafka<br/>이벤트 드리븐"]
+    end
+
+    KONG --> Services
+    SVC1 <-->|gRPC| SVC2
+    SVC2 <-->|gRPC| SVC3
+    Services --> KAFKA
+```
+
+| 패턴 | 구현 | 설명 |
+|------|------|------|
+| API Gateway | Kong + Ingress Controller | 트래픽 관리, 인증 |
+| Service Mesh | gRPC + mTLS | 서비스간 보안 통신 |
+| Event-Driven | MSK Kafka | 비동기 이벤트 처리 |
+| GitOps | ArgoCD | 선언적 배포 |
+
+**학습 포인트:**
+- gRPC vs REST 트레이드오프
+- Circuit Breaker 패턴 (Kong)
+- GitOps 배포 전략 (Blue-Green, Canary)
+
+### 4. Observability Stack (LGTM + Multi-Backend)
+
+```mermaid
+flowchart TB
+    subgraph Services["마이크로서비스"]
+        SVC["HireHub Services<br/>(7 services)"]
+    end
+
+    subgraph Collection["OTEL Collector (DaemonSet)"]
+        OTEL["OpenTelemetry<br/>Collector"]
+    end
+
+    subgraph LGTM["Grafana LGTM Stack"]
+        LOKI["Loki<br/>(SimpleScalable)"]
+        TEMPO["Tempo<br/>(Distributed)"]
+        MIMIR["Mimir<br/>(Long-term Metrics)"]
+    end
+
+    subgraph Analytics["Log Analytics"]
+        CH["ClickHouse<br/>(SQL 분석)"]
+        OS["OpenSearch<br/>(AWS Managed)"]
+    end
+
+    subgraph Visualization["시각화"]
+        GRAFANA["Grafana<br/>(5 Datasources)"]
+    end
+
+    SVC -->|OTLP| OTEL
+    OTEL -->|Logs| LOKI
+    OTEL -->|Traces| TEMPO
+    OTEL -->|Metrics| MIMIR
+    OTEL -->|Logs| CH
+    OTEL -->|Logs| OS
+    LOKI --> GRAFANA
+    TEMPO --> GRAFANA
+    MIMIR --> GRAFANA
+    CH --> GRAFANA
+    OS --> GRAFANA
+```
+
+**LGTM Stack 구성:**
+| Component | 역할 | 쿼리 언어 |
+|-----------|------|----------|
+| **L**oki | 로그 수집/저장 | LogQL |
+| **G**rafana | 통합 시각화 | - |
+| **T**empo | 분산 트레이싱 | TraceQL |
+| **M**imir | 장기 메트릭 저장 | PromQL |
+
+**멀티 백엔드 로그 분석:**
+| 백엔드 | 용도 | 장점 |
+|--------|------|------|
+| Loki | 실시간 로그 | K8s 네이티브, 경량 |
+| ClickHouse | SQL 분석 | 초고속 집계 쿼리 |
+| OpenSearch | Full-text 검색 | 복잡한 검색 조건 |
+
+**Grafana Datasources:**
+```yaml
+datasources:
+  - Loki        # LogQL 기반 로그 검색
+  - Tempo       # TraceQL 기반 트레이싱
+  - Mimir       # PromQL 기반 메트릭
+  - ClickHouse  # SQL 기반 로그 분석
+  - OpenSearch  # Full-text 검색
+```
+
+**학습 포인트:**
+- OTEL Collector Fan-out 패턴 (1:N 데이터 분배)
+- Loki SimpleScalable vs Monolithic 아키텍처
+- Tempo와 Loki 연동 (TraceID 기반 로그-트레이스 상관관계)
+- Mimir vs Prometheus 비교 (확장성, 장기 저장)
+- ClickHouse vs Loki vs OpenSearch 쿼리 성능 비교
+
+### 5. Auto Scaling (Karpenter + KEDA)
+
+```mermaid
+flowchart TB
+    subgraph Triggers["트리거"]
+        METRICS["메트릭 기반<br/>CPU/Memory"]
+        EVENTS["이벤트 기반<br/>Kafka Lag"]
+    end
+
+    subgraph Scaling["스케일링"]
+        KEDA["KEDA<br/>Pod 스케일링"]
+        KARPENTER["Karpenter<br/>노드 스케일링"]
+    end
+
+    subgraph Resources["리소스"]
+        PODS["Pods"]
+        NODES["EC2 Nodes<br/>Spot 인스턴스"]
+    end
+
+    METRICS --> KEDA
+    EVENTS --> KEDA
+    KEDA --> PODS
+    PODS -.->|리소스 부족| KARPENTER
+    KARPENTER --> NODES
+```
+
+| 레이어 | 도구 | 스케일링 기준 |
+|--------|------|--------------|
+| Pod | KEDA | Kafka Consumer Lag, HTTP 요청수 |
+| Node | Karpenter | Pending Pod 리소스 요청 |
+
+**Karpenter 구성:**
+```yaml
+# NodePool 예시
+apiVersion: karpenter.sh/v1
+kind: NodePool
+spec:
+  template:
+    spec:
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: ["m5.large", "m5.xlarge"]
+```
+
+**KEDA ScaledObject:**
+```yaml
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+spec:
+  scaleTargetRef:
+    name: notification-service
+  triggers:
+    - type: kafka
+      metadata:
+        topic: notifications
+        lagThreshold: "100"
+```
+
+**학습 포인트:**
+- Karpenter vs Cluster Autoscaler 비교
+- Spot Instance 중단 처리
+- KEDA 외부 스케일러 (Kafka, AWS SQS)
+
+### 6. DR Architecture (ECS Hot Standby)
+
+```mermaid
+flowchart TB
+    subgraph Primary["Primary - EKS"]
+        EKS["EKS Cluster"]
+        EKS_SVC["Services<br/>100% 트래픽"]
+    end
+
+    subgraph DR["DR - ECS"]
+        ECS["ECS Cluster"]
+        FARGATE["Fargate<br/>온디맨드"]
+        MANAGED["Managed Instance<br/>최소 유지"]
+    end
+
+    subgraph Shared["공유 리소스"]
+        AURORA["Aurora<br/>Global Database"]
+        S3["S3<br/>Cross-Region Replication"]
+    end
+
+    ALB["Application<br/>Load Balancer"]
+
+    ALB -->|"100%"| EKS_SVC
+    ALB -.->|"0%"| ECS
+    EKS & ECS --> AURORA & S3
+```
+
+| 구성 | EKS (Primary) | ECS (DR) |
+|------|--------------|----------|
+| 역할 | 메인 운영 | Hot Standby |
+| 스케일링 | Karpenter + KEDA | Fargate Auto Scaling |
+| 비용 | Spot 인스턴스 활용 | 최소 Managed Instance 유지 |
+
+**학습 포인트:**
+- EKS vs ECS 아키텍처 차이
+- Fargate vs EC2 Launch Type 비교
+- RTO/RPO 목표에 따른 DR 전략
+
+### 7. DR Failover Automation
+
+```mermaid
+sequenceDiagram
+    participant CW as CloudWatch
+    participant R53 as Route53
+    participant Lambda
+    participant ALB
+    participant EKS
+    participant ECS
+
+    CW->>R53: Health Check 실패 감지
+    R53->>Lambda: Failover 트리거
+    Lambda->>ALB: Target Group Weight 변경
+    Note over ALB: EKS 100%→0%<br/>ECS 0%→100%
+    Lambda->>ECS: Auto Scaling 트리거
+    ECS->>ECS: Task 스케일 아웃
+    Lambda->>CW: Failover 메트릭 발행
+```
+
+**Lambda Failover 함수:**
+```python
+def lambda_handler(event, context):
+    # ALB Target Group Weight 변경
+    elbv2.modify_rule(
+        RuleArn=rule_arn,
+        Actions=[{
+            'Type': 'forward',
+            'ForwardConfig': {
+                'TargetGroups': [
+                    {'TargetGroupArn': eks_tg, 'Weight': 0},
+                    {'TargetGroupArn': ecs_tg, 'Weight': 100}
+                ]
+            }
+        }]
+    )
+```
+
+| 구성요소 | 역할 |
+|---------|------|
+| Route53 Health Check | EKS 엔드포인트 상태 모니터링 |
+| CloudWatch Alarm | 장애 감지 및 Lambda 트리거 |
+| Lambda | ALB Rule 수정, ECS 스케일 아웃 |
+| ALB Weighted Routing | 트래픽 분배 (100:0 → 0:100) |
+
+**학습 포인트:**
+- Route53 Failover Routing vs ALB Weighted Routing
+- Lambda 기반 자동화 vs Step Functions
+- 장애 복구 테스트 (Chaos Engineering)
 
 ---
 

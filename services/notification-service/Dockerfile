@@ -1,9 +1,8 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.23-alpine AS builder
 RUN apk add --no-cache git ca-certificates tzdata
 WORKDIR /build
-COPY proto/ /proto/
 COPY services/notification-service/go.mod services/notification-service/go.sum ./
-RUN go mod edit -replace github.com/hirehub/proto=/proto && go mod download && go mod verify
+RUN go mod download && go mod verify
 COPY services/notification-service/ .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /app/notification-service ./cmd/main.go
 

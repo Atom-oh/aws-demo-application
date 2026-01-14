@@ -40,6 +40,20 @@ provider "aws" {
   }
 }
 
+# US East 1 provider for CloudFront ACM certificates
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+
+  default_tags {
+    tags = {
+      Project     = var.project_name
+      Environment = var.environment
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
 # Kubernetes provider configuration
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
@@ -273,6 +287,79 @@ module "kong" {
     "service.beta.kubernetes.io/aws-load-balancer-ssl-ports"       = "443"
     "service.beta.kubernetes.io/aws-load-balancer-backend-protocol" = "tcp"
   }
+
+  tags = var.tags
+}
+
+# AWS Load Balancer Controller Module
+module "alb_controller" {
+  source = "../../modules/alb-controller"
+
+  project_name         = var.project_name
+  environment          = var.environment
+  cluster_name         = module.eks.cluster_name
+  namespace            = "kube-system"
+  service_account_name = "aws-load-balancer-controller"
+
+  tags = var.tags
+}
+
+# EKS ArgoCD Capability Module (Managed ArgoCD)
+module "eks_argocd" {
+  source = "../../modules/eks-argocd"
+
+  project_name    = var.project_name
+  environment     = var.environment
+  cluster_name    = module.eks.cluster_name
+  capability_name = "argocd"
+  namespace       = "argocd"
+
+  # AWS Identity Center (SSO) integration
+  idc_instance_arn = var.idc_instance_arn
+  idc_region       = var.idc_region
+
+  # RBAC mappings for Identity Center users/groups
+  rbac_role_mappings = var.argocd_rbac_role_mappings
+
+  # Private network access (optional)
+  vpce_ids = var.argocd_vpce_ids
+
+  tags = var.tags
+}
+
+# CloudFront Module for custom domains
+module "cloudfront" {
+  source = "../../modules/cloudfront"
+
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  project_name     = var.project_name
+  environment      = var.environment
+  domain_name      = var.cloudfront_domain_name
+  hosted_zone_name = var.hosted_zone_name
+
+  # ArgoCD Distribution
+  create_argocd_distribution = var.create_argocd_cloudfront
+  argocd_domain              = var.argocd_domain
+  argocd_origin_domain       = module.eks_argocd.server_url != null ? replace(module.eks_argocd.server_url, "https://", "") : ""
+  argocd_waf_acl_id          = var.argocd_waf_acl_id
+
+  # Kong API Gateway Distribution
+  create_kong_distribution = var.create_kong_cloudfront
+  kong_domain              = var.kong_domain
+  kong_origin_domain       = var.kong_nlb_dns_name
+  kong_waf_acl_id          = var.kong_waf_acl_id
+  origin_verify_secret     = var.origin_verify_secret
+
+  # Frontend Distribution (Next.js Hybrid: S3 + EKS SSR)
+  create_frontend_distribution   = var.create_frontend_cloudfront
+  frontend_domain                = var.frontend_domain
+  frontend_s3_bucket_domain      = module.s3.assets_bucket_regional_domain_name
+  frontend_ssr_origin_domain     = var.frontend_ssr_origin_domain
+  frontend_waf_acl_id            = var.frontend_waf_acl_id
 
   tags = var.tags
 }

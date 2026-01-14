@@ -1,5 +1,5 @@
 """API routes."""
 
-from app.api.routes import pii, embedding, analysis
+from app.api.routes import pii, embedding, analysis, rag
 
-__all__ = ["pii", "embedding", "analysis"]
+__all__ = ["pii", "embedding", "analysis", "rag"]

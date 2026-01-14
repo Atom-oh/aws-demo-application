@@ -1,0 +1,76 @@
+# Karpenter Node Auto-Scaler Application
+# Provides efficient node provisioning based on pending pod requirements
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: karpenter
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: karpenter
+    app.kubernetes.io/part-of: hirehub
+    app.kubernetes.io/component: autoscaler
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: oci://public.ecr.aws/karpenter
+    chart: karpenter
+    targetRevision: 1.1.0
+    helm:
+      releaseName: karpenter
+      values: |
+        # ===========================================
+        # Karpenter Controller Configuration
+        # ===========================================
+        settings:
+          clusterName: demo-hirehub-eks
+          clusterEndpoint: https://9583A75CB58CE0EB56ACEB9335761E3F.gr7.ap-northeast-2.eks.amazonaws.com
+
+        # ===========================================
+        # Service Account Configuration (IRSA)
+        # ===========================================
+        serviceAccount:
+          create: true
+          name: karpenter
+          annotations:
+            eks.amazonaws.com/role-arn: arn:aws:iam::180294183052:role/karpenter-controller-demo-hirehub-eks
+
+        # ===========================================
+        # Controller Configuration
+        # ===========================================
+        controller:
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+        # Single replica for demo
+        replicas: 1
+
+        # ===========================================
+        # Logging
+        # ===========================================
+        logLevel: info
+
+  destination:
+    name: in-cluster
+    namespace: kube-system
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m

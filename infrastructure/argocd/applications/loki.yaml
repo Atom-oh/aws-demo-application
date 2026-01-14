@@ -1,0 +1,114 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: loki
+    targetRevision: 6.24.0
+    helm:
+      releaseName: loki
+      values: |
+        # SimpleScalable deployment mode
+        deploymentMode: SimpleScalable
+
+        loki:
+          auth_enabled: false
+
+          # Storage configuration (using MinIO for demo)
+          storage:
+            type: s3
+            bucketNames:
+              chunks: loki-chunks
+              ruler: loki-ruler
+              admin: loki-admin
+            s3:
+              endpoint: minio.monitoring.svc.cluster.local:9000
+              secretAccessKey: minioadmin
+              accessKeyId: minioadmin
+              s3ForcePathStyle: true
+              insecure: true
+
+          # Limits configuration
+          limits_config:
+            retention_period: 168h  # 7 days
+            allow_structured_metadata: true
+            max_query_parallelism: 32
+            ingestion_rate_mb: 10
+            ingestion_burst_size_mb: 20
+
+          # Schema configuration
+          schemaConfig:
+            configs:
+              - from: "2024-01-01"
+                store: tsdb
+                object_store: s3
+                schema: v13
+                index:
+                  prefix: loki_index_
+                  period: 24h
+
+        # Read component
+        read:
+          replicas: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+
+        # Write component
+        write:
+          replicas: 2
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+
+        # Backend component
+        backend:
+          replicas: 1
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+
+        # MinIO for local S3-compatible storage
+        minio:
+          enabled: true
+          persistence:
+            size: 10Gi
+
+        # Disable components not needed for SimpleScalable
+        singleBinary:
+          replicas: 0
+
+        # Gateway
+        gateway:
+          enabled: true
+          replicas: 1
+
+  destination:
+    name: in-cluster
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

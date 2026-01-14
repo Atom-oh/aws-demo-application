@@ -1,0 +1,95 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: clickhouse
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://charts.bitnami.com/bitnami
+    chart: clickhouse
+    targetRevision: 9.4.4
+    helm:
+      releaseName: clickhouse
+      values: |
+        # Single shard, single replica for demo
+        shards: 1
+        replicaCount: 1
+
+        # Resources
+        resourcesPreset: "medium"
+
+        # Persistence
+        persistence:
+          enabled: true
+          size: 20Gi
+
+        # Authentication
+        auth:
+          username: admin
+          password: clickhouse123
+
+        # Keeper disabled for single node
+        keeper:
+          enabled: false
+
+        # ZooKeeper disabled for single node
+        zookeeper:
+          enabled: false
+
+        # Extra configuration for OTEL
+        extraOverrides: |
+          <clickhouse>
+            <profiles>
+              <default>
+                <max_memory_usage>2000000000</max_memory_usage>
+              </default>
+            </profiles>
+          </clickhouse>
+
+        # Init SQL scripts to create OTEL tables
+        initdbScripts:
+          init-otel.sql: |
+            CREATE DATABASE IF NOT EXISTS otel;
+
+            CREATE TABLE IF NOT EXISTS otel.logs (
+              Timestamp DateTime64(9),
+              TraceId String,
+              SpanId String,
+              SeverityText LowCardinality(String),
+              ServiceName LowCardinality(String),
+              Body String,
+              ResourceAttributes Map(LowCardinality(String), String),
+              LogAttributes Map(LowCardinality(String), String)
+            ) ENGINE = MergeTree()
+            PARTITION BY toDate(Timestamp)
+            ORDER BY (ServiceName, Timestamp)
+            TTL toDateTime(Timestamp) + INTERVAL 7 DAY;
+
+            CREATE TABLE IF NOT EXISTS otel.traces (
+              Timestamp DateTime64(9),
+              TraceId String,
+              SpanId String,
+              ParentSpanId String,
+              SpanName LowCardinality(String),
+              ServiceName LowCardinality(String),
+              Duration Int64,
+              StatusCode LowCardinality(String)
+            ) ENGINE = MergeTree()
+            PARTITION BY toDate(Timestamp)
+            ORDER BY (ServiceName, Timestamp)
+            TTL toDateTime(Timestamp) + INTERVAL 7 DAY;
+
+  destination:
+    name: in-cluster
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

@@ -209,3 +209,33 @@ class BedrockClient:
         )
 
         return response["output"]["text"]
+
+    async def generate_text(
+        self,
+        prompt: str,
+        model_id: Optional[str] = None,
+        max_tokens: int = 1024,
+        temperature: float = 0.7,
+    ) -> str:
+        """
+        Generate text using a Bedrock model (convenience wrapper).
+
+        This is a simplified wrapper around invoke_model that returns
+        only the generated text, discarding token usage information.
+
+        Args:
+            prompt: Prompt text
+            model_id: Model ID (defaults to settings.BEDROCK_ANALYSIS_MODEL)
+            max_tokens: Maximum tokens in response
+            temperature: Sampling temperature
+
+        Returns:
+            Generated text response
+        """
+        text, _ = await self.invoke_model(
+            prompt=prompt,
+            model_id=model_id,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+        return text

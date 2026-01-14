@@ -7,7 +7,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.0"
+      version = ">= 6.0"
     }
   }
 
@@ -22,6 +22,20 @@ terraform {
 
 provider "aws" {
   region = "ap-northeast-2"
+
+  default_tags {
+    tags = {
+      Project     = "hirehub"
+      Environment = "demo"
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
+# US East 1 provider for CloudFront ACM certificates
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
 
   default_tags {
     tags = {
@@ -128,9 +142,10 @@ module "eks" {
   environment            = local.environment
   vpc_id                 = module.vpc.vpc_id
   private_subnet_ids     = module.vpc.private_subnet_ids
-  cluster_version        = "1.29"
+  cluster_version        = "1.34"
   endpoint_public_access = true  # Demo 환경이므로 public access 허용
 
+  ami_type               = "AL2023_x86_64_STANDARD"  # AL2023 for EKS 1.33+
   node_instance_types    = ["t3.medium"]
   capacity_type          = "SPOT"
   node_desired_size      = 2
@@ -141,6 +156,89 @@ module "eks" {
   enable_keda            = false  # Demo에서는 비활성화
 
   enabled_cluster_log_types = ["api", "audit"]
+
+  tags = {
+    Project     = local.project_name
+    Environment = local.environment
+  }
+}
+
+# =============================================================================
+# AWS Load Balancer Controller
+# =============================================================================
+module "alb_controller" {
+  source = "../modules/alb-controller"
+
+  project_name         = local.project_name
+  environment          = local.environment
+  cluster_name         = module.eks.cluster_name
+  namespace            = "kube-system"
+  service_account_name = "aws-load-balancer-controller"
+
+  tags = {
+    Project     = local.project_name
+    Environment = local.environment
+  }
+}
+
+# =============================================================================
+# EKS ArgoCD Capability (Managed ArgoCD)
+# =============================================================================
+module "eks_argocd" {
+  source = "../modules/eks-argocd"
+
+  project_name    = local.project_name
+  environment     = local.environment
+  cluster_name    = module.eks.cluster_name
+  capability_name = "argocd"
+  namespace       = "argocd"
+
+  # AWS Identity Center (SSO) - Required for EKS ArgoCD Capability
+  idc_instance_arn = "arn:aws:sso:::instance/ssoins-723043e00756671c"
+  idc_region       = "ap-northeast-2"
+
+  # RBAC Role Mappings for Identity Center users/groups
+  rbac_role_mappings = [
+    {
+      role = "ADMIN"
+      identities = [
+        {
+          id   = "9b6767ca5e-85bb93fc-5ebe-4c11-9379-c5696247ec59"  # Admins@amazon.com group
+          type = "SSO_GROUP"
+        },
+        {
+          id   = "9b6767ca5e-08632052-e55b-49c7-bffd-760f5f287fee"  # test1@AMAZON.COM user
+          type = "SSO_USER"
+        }
+      ]
+    }
+  ]
+
+  tags = {
+    Project     = local.project_name
+    Environment = local.environment
+  }
+}
+
+# =============================================================================
+# CloudFront for Kong API Gateway and Frontend
+# =============================================================================
+module "cloudfront" {
+  source = "../modules/cloudfront"
+
+  providers = {
+    aws           = aws
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  project_name     = local.project_name
+  environment      = local.environment
+  domain_name      = "*.aws.atomai.click"
+  hosted_zone_name = "aws.atomai.click"
+
+  # Kong/Frontend - disabled for now
+  create_kong_distribution     = false
+  create_frontend_distribution = false
 
   tags = {
     Project     = local.project_name
@@ -193,4 +291,21 @@ output "eks_cluster_ca_data" {
   description = "EKS cluster CA certificate"
   value       = module.eks.cluster_certificate_authority_data
   sensitive   = true
+}
+
+# ArgoCD Outputs
+output "argocd_capability_arn" {
+  description = "ArgoCD Capability ARN"
+  value       = module.eks_argocd.capability_arn
+}
+
+output "argocd_server_url" {
+  description = "ArgoCD Server URL (EKS Managed)"
+  value       = module.eks_argocd.server_url
+}
+
+# ALB Controller Outputs
+output "alb_controller_role_arn" {
+  description = "ALB Controller IAM Role ARN"
+  value       = module.alb_controller.role_arn
 }

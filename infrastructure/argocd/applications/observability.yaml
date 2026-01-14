@@ -1,0 +1,320 @@
+# Observability Stack Application
+# Deploys Prometheus, Grafana, and Alertmanager via kube-prometheus-stack
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: observability
+    app.kubernetes.io/part-of: hirehub
+    app.kubernetes.io/component: monitoring
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: hirehub
+
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 65.1.1
+    helm:
+      releaseName: prometheus
+      values: |
+        # ===========================================
+        # Global Settings
+        # ===========================================
+        fullnameOverride: prometheus
+
+        # ===========================================
+        # Prometheus Configuration
+        # ===========================================
+        prometheus:
+          enabled: true
+          prometheusSpec:
+            replicas: 1
+            retention: 7d
+            retentionSize: 10GB
+
+            # Resource limits
+            resources:
+              requests:
+                cpu: 500m
+                memory: 1Gi
+              limits:
+                cpu: 2000m
+                memory: 4Gi
+
+            # Storage configuration
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: gp3
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 50Gi
+
+            # ServiceMonitor selector - match all ServiceMonitors
+            serviceMonitorSelector: {}
+            serviceMonitorNamespaceSelector: {}
+
+            # PodMonitor selector
+            podMonitorSelector: {}
+            podMonitorNamespaceSelector: {}
+
+            # Scrape configuration for additional targets
+            additionalScrapeConfigs: []
+
+          # Ingress disabled - use port-forward or Kong route
+          ingress:
+            enabled: false
+
+        # ===========================================
+        # Grafana Configuration
+        # ===========================================
+        grafana:
+          enabled: true
+          replicas: 1
+
+          # Admin credentials from secret
+          adminPassword: "admin"  # Change in production
+
+          # Resource limits
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          # Persistence
+          persistence:
+            enabled: true
+            storageClassName: gp3
+            size: 10Gi
+
+          # Grafana configuration
+          grafana.ini:
+            server:
+              root_url: "%(protocol)s://%(domain)s/grafana"
+              serve_from_sub_path: true
+            auth.anonymous:
+              enabled: false
+            security:
+              admin_user: admin
+
+          # Sidecar for dashboard discovery
+          sidecar:
+            dashboards:
+              enabled: true
+              label: grafana_dashboard
+              searchNamespace: ALL
+            datasources:
+              enabled: true
+              defaultDatasourceEnabled: true
+
+          # Pre-configured dashboards
+          dashboardProviders:
+            dashboardproviders.yaml:
+              apiVersion: 1
+              providers:
+                - name: 'default'
+                  orgId: 1
+                  folder: ''
+                  type: file
+                  disableDeletion: false
+                  editable: true
+                  options:
+                    path: /var/lib/grafana/dashboards/default
+
+          # Dashboard configurations (JSON)
+          dashboards:
+            default:
+              kubernetes-cluster:
+                gnetId: 7249
+                revision: 1
+                datasource: Prometheus
+              kubernetes-pods:
+                gnetId: 6879
+                revision: 1
+                datasource: Prometheus
+              kong:
+                gnetId: 7424
+                revision: 7
+                datasource: Prometheus
+
+          # Ingress disabled - use port-forward or Kong route
+          ingress:
+            enabled: false
+
+        # ===========================================
+        # Alertmanager Configuration
+        # ===========================================
+        alertmanager:
+          enabled: true
+          alertmanagerSpec:
+            replicas: 1
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 200m
+                memory: 256Mi
+
+            # Storage
+            storage:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: gp3
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 5Gi
+
+          # Alertmanager config (basic)
+          config:
+            global:
+              resolve_timeout: 5m
+            route:
+              group_by: ['alertname', 'namespace']
+              group_wait: 30s
+              group_interval: 5m
+              repeat_interval: 12h
+              receiver: 'null'
+              routes: []
+            receivers:
+              - name: 'null'
+            inhibit_rules:
+              - source_matchers:
+                  - severity = critical
+                target_matchers:
+                  - severity =~ warning|info
+                equal:
+                  - namespace
+                  - alertname
+
+          ingress:
+            enabled: false
+
+        # ===========================================
+        # Default Prometheus Rules
+        # ===========================================
+        defaultRules:
+          create: true
+          rules:
+            alertmanager: true
+            etcd: false  # Managed by EKS
+            configReloaders: true
+            general: true
+            k8s: true
+            kubeApiserverAvailability: true
+            kubeApiserverBurnrate: true
+            kubeApiserverHistogram: true
+            kubeApiserverSlos: true
+            kubeControllerManager: false  # Managed by EKS
+            kubelet: true
+            kubePrometheusGeneral: true
+            kubePrometheusNodeRecording: true
+            kubernetesApps: true
+            kubernetesResources: true
+            kubernetesStorage: true
+            kubernetesSystem: true
+            kubeScheduler: false  # Managed by EKS
+            kubeStateMetrics: true
+            network: true
+            node: true
+            nodeExporterAlerting: true
+            nodeExporterRecording: true
+            prometheus: true
+            prometheusOperator: true
+
+        # ===========================================
+        # Kube-state-metrics Configuration
+        # ===========================================
+        kubeStateMetrics:
+          enabled: true
+
+        kube-state-metrics:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+
+        # ===========================================
+        # Node Exporter Configuration
+        # ===========================================
+        nodeExporter:
+          enabled: true
+
+        prometheus-node-exporter:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+        # ===========================================
+        # Prometheus Operator Configuration
+        # ===========================================
+        prometheusOperator:
+          enabled: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+        # ===========================================
+        # Disabled Components (EKS managed)
+        # ===========================================
+        kubeControllerManager:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+        kubeEtcd:
+          enabled: false
+        kubeProxy:
+          enabled: false
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle

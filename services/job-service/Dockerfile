@@ -1,8 +1,11 @@
 FROM gradle:8.5-jdk21 AS builder
 WORKDIR /build
+COPY proto/ /proto/
 COPY services/job-service/build.gradle services/job-service/settings.gradle ./
 COPY services/job-service/src ./src
-RUN gradle build -x test --no-daemon
+# Update proto path in build.gradle for Docker context
+RUN sed -i "s|srcDir '../../proto'|srcDir '/proto'|g" build.gradle && \
+    gradle build -x test --no-daemon
 
 FROM eclipse-temurin:21-jre-alpine
 RUN apk add --no-cache curl
