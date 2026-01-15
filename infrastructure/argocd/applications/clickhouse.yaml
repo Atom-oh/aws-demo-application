@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://charts.bitnami.com/bitnami
     chart: clickhouse
-    targetRevision: 9.4.4
+    targetRevision: 6.2.16
     helm:
       releaseName: clickhouse
       values: |
@@ -19,12 +19,18 @@ spec:
         replicaCount: 1
 
         # Resources
-        resourcesPreset: "medium"
+        resources:
+          limits:
+            cpu: "1"
+            memory: 2Gi
+          requests:
+            cpu: 250m
+            memory: 512Mi
 
         # Persistence
         persistence:
           enabled: true
-          size: 20Gi
+          size: 10Gi
 
         # Authentication
         auth:
@@ -38,49 +44,6 @@ spec:
         # ZooKeeper disabled for single node
         zookeeper:
           enabled: false
-
-        # Extra configuration for OTEL
-        extraOverrides: |
-          <clickhouse>
-            <profiles>
-              <default>
-                <max_memory_usage>2000000000</max_memory_usage>
-              </default>
-            </profiles>
-          </clickhouse>
-
-        # Init SQL scripts to create OTEL tables
-        initdbScripts:
-          init-otel.sql: |
-            CREATE DATABASE IF NOT EXISTS otel;
-
-            CREATE TABLE IF NOT EXISTS otel.logs (
-              Timestamp DateTime64(9),
-              TraceId String,
-              SpanId String,
-              SeverityText LowCardinality(String),
-              ServiceName LowCardinality(String),
-              Body String,
-              ResourceAttributes Map(LowCardinality(String), String),
-              LogAttributes Map(LowCardinality(String), String)
-            ) ENGINE = MergeTree()
-            PARTITION BY toDate(Timestamp)
-            ORDER BY (ServiceName, Timestamp)
-            TTL toDateTime(Timestamp) + INTERVAL 7 DAY;
-
-            CREATE TABLE IF NOT EXISTS otel.traces (
-              Timestamp DateTime64(9),
-              TraceId String,
-              SpanId String,
-              ParentSpanId String,
-              SpanName LowCardinality(String),
-              ServiceName LowCardinality(String),
-              Duration Int64,
-              StatusCode LowCardinality(String)
-            ) ENGINE = MergeTree()
-            PARTITION BY toDate(Timestamp)
-            ORDER BY (ServiceName, Timestamp)
-            TTL toDateTime(Timestamp) + INTERVAL 7 DAY;
 
   destination:
     name: in-cluster
