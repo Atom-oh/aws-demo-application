@@ -135,6 +135,13 @@ spec:
               detectors: [env, system]
               timeout: 5s
 
+            # Add Loki label hints
+            resource:
+              attributes:
+                - key: loki.resource.labels
+                  value: k8s.namespace.name, k8s.pod.name, k8s.container.name, k8s.node.name
+                  action: insert
+
             # K8s attributes enrichment
             k8sattributes:
               auth_type: "serviceAccount"
@@ -179,18 +186,6 @@ spec:
               default_labels_enabled:
                 exporter: false
                 job: true
-              labels:
-                resource:
-                  k8s.namespace.name: "namespace"
-                  k8s.pod.name: "pod"
-                  k8s.container.name: "container"
-                  k8s.node.name: "node"
-                  k8s.deployment.name: "deployment"
-                  k8s.daemonset.name: "daemonset"
-                  k8s.statefulset.name: "statefulset"
-                  app: "app"
-                attributes:
-                  log.iostream: "stream"
 
             # Tempo exporter for traces
             otlp/tempo:
@@ -222,7 +217,7 @@ spec:
               # Logs pipeline - fan out to Loki, ClickHouse
               logs:
                 receivers: [otlp, filelog]
-                processors: [memory_limiter, k8sattributes, batch]
+                processors: [memory_limiter, k8sattributes, resource, batch]
                 exporters: [loki, clickhouse]
 
               # Traces pipeline - fan out to Tempo, ClickHouse
