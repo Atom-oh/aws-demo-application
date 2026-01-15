@@ -236,8 +236,12 @@ module "cloudfront" {
   domain_name      = "*.aws.atomai.click"
   hosted_zone_name = "aws.atomai.click"
 
-  # Kong/Frontend - disabled for now
-  create_kong_distribution     = false
+  # Kong API Gateway Distribution
+  create_kong_distribution = true
+  kong_domain              = "msa-demo.aws.atomai.click"
+  kong_origin_domain       = "k8s-kong-kongkong-500127eeac-ae814745eae1b163.elb.ap-northeast-2.amazonaws.com"
+
+  # Frontend - disabled for now
   create_frontend_distribution = false
 
   tags = {
@@ -308,4 +312,15 @@ output "argocd_server_url" {
 output "alb_controller_role_arn" {
   description = "ALB Controller IAM Role ARN"
   value       = module.alb_controller.role_arn
+}
+
+# CloudFront Outputs
+output "kong_api_url" {
+  description = "Kong API Gateway URL via CloudFront"
+  value       = module.cloudfront.kong_url
+}
+
+output "kong_cloudfront_distribution_id" {
+  description = "CloudFront Distribution ID for Kong"
+  value       = module.cloudfront.kong_distribution_id
 }

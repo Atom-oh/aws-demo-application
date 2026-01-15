@@ -1,0 +1,8 @@
+# Demo Namespace for HireHub Services
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+  labels:
+    app.kubernetes.io/part-of: hirehub
+    environment: demo

@@ -1,0 +1,112 @@
+# Kong Ingress Routes for HireHub Demo Services
+# Kong Ingress Controller will handle routing
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hirehub-api
+  namespace: demo
+  labels:
+    app.kubernetes.io/part-of: hirehub
+  annotations:
+    konghq.com/strip-path: "true"
+    konghq.com/protocols: "http,https"
+spec:
+  ingressClassName: kong
+  rules:
+    # API routing by path prefix
+    - http:
+        paths:
+          # User Service API
+          - path: /api/v1/users
+            pathType: Prefix
+            backend:
+              service:
+                name: user-service
+                port:
+                  number: 8001
+          # Job Service API
+          - path: /api/v1/jobs
+            pathType: Prefix
+            backend:
+              service:
+                name: job-service
+                port:
+                  number: 8080
+          # Resume Service API
+          - path: /api/v1/resumes
+            pathType: Prefix
+            backend:
+              service:
+                name: resume-service
+                port:
+                  number: 8003
+          # Apply Service API
+          - path: /api/v1/applications
+            pathType: Prefix
+            backend:
+              service:
+                name: apply-service
+                port:
+                  number: 8004
+          # Match Service API
+          - path: /api/v1/matches
+            pathType: Prefix
+            backend:
+              service:
+                name: match-service
+                port:
+                  number: 8005
+          # AI Service API
+          - path: /api/v1/ai
+            pathType: Prefix
+            backend:
+              service:
+                name: ai-service
+                port:
+                  number: 8006
+          # Notification Service API
+          - path: /api/v1/notifications
+            pathType: Prefix
+            backend:
+              service:
+                name: notification-service
+                port:
+                  number: 8007
+---
+# Health check endpoint aggregator
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hirehub-health
+  namespace: demo
+  labels:
+    app.kubernetes.io/part-of: hirehub
+  annotations:
+    konghq.com/strip-path: "false"
+spec:
+  ingressClassName: kong
+  rules:
+    - http:
+        paths:
+          - path: /health/user
+            pathType: Prefix
+            backend:
+              service:
+                name: user-service
+                port:
+                  number: 8001
+          - path: /health/job
+            pathType: Prefix
+            backend:
+              service:
+                name: job-service
+                port:
+                  number: 8080
+          - path: /health/ai
+            pathType: Prefix
+            backend:
+              service:
+                name: ai-service
+                port:
+                  number: 8006

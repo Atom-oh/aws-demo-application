@@ -1,0 +1,525 @@
+# HireHub Demo Services
+# ECR: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/*
+---
+# =============================================================================
+# User Service (Go/gRPC)
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: user-service
+    app.kubernetes.io/part-of: hirehub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: user-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: user-service
+        app.kubernetes.io/part-of: hirehub
+    spec:
+      containers:
+        - name: user-service
+          image: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/user-service:latest
+          ports:
+            - name: grpc
+              containerPort: 50051
+            - name: http
+              containerPort: 8001
+          env:
+            - name: GRPC_PORT
+              value: "50051"
+            - name: HTTP_PORT
+              value: "8001"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: DB_HOST
+              value: "postgres.demo.svc.cluster.local"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "hirehub_users"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8001
+            initialDelaySeconds: 15
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: user-service
+spec:
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: grpc
+    - name: http
+      port: 8001
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: user-service
+---
+# =============================================================================
+# Job Service (Java/Spring Boot/gRPC)
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: job-service
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: job-service
+    app.kubernetes.io/part-of: hirehub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: job-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: job-service
+        app.kubernetes.io/part-of: hirehub
+    spec:
+      containers:
+        - name: job-service
+          image: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/job-service:latest
+          ports:
+            - name: grpc
+              containerPort: 50051
+            - name: http
+              containerPort: 8080
+          env:
+            - name: GRPC_PORT
+              value: "50051"
+            - name: SERVER_PORT
+              value: "8080"
+            - name: SPRING_PROFILES_ACTIVE
+              value: "demo"
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://postgres.demo.svc.cluster.local:5432/hirehub_jobs"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "postgres"
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 90
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: job-service
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: job-service
+spec:
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: grpc
+    - name: http
+      port: 8080
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: job-service
+---
+# =============================================================================
+# AI Service (Python/FastAPI)
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-service
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: ai-service
+    app.kubernetes.io/part-of: hirehub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ai-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ai-service
+        app.kubernetes.io/part-of: hirehub
+    spec:
+      containers:
+        - name: ai-service
+          image: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/ai-service:latest
+          ports:
+            - name: http
+              containerPort: 8006
+          env:
+            - name: PORT
+              value: "8006"
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: APP_ENV
+              value: "demo"
+            - name: AWS_REGION
+              value: "ap-northeast-2"
+            - name: DATABASE_URL
+              value: "postgresql+asyncpg://postgres:postgres123@postgres.demo.svc.cluster.local:5432/hirehub_ai"
+            - name: USE_AGENTCORE
+              value: "false"
+            - name: REDIS_URL
+              value: "redis://localhost:6379/0"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8006
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8006
+            initialDelaySeconds: 45
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-service
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: ai-service
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8006
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: ai-service
+---
+# =============================================================================
+# Apply Service (Go/gRPC)
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apply-service
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: apply-service
+    app.kubernetes.io/part-of: hirehub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: apply-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: apply-service
+        app.kubernetes.io/part-of: hirehub
+    spec:
+      containers:
+        - name: apply-service
+          image: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/apply-service:latest
+          ports:
+            - name: grpc
+              containerPort: 8004
+          env:
+            - name: PORT
+              value: "8004"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: DATABASE_URL
+              value: "postgres://postgres:postgres123@postgres.demo.svc.cluster.local:5432/hirehub_applications?sslmode=disable"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8004
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8004
+            initialDelaySeconds: 15
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apply-service
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: apply-service
+spec:
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 8004
+      targetPort: grpc
+  selector:
+    app.kubernetes.io/name: apply-service
+---
+# =============================================================================
+# Match Service (Python/FastAPI)
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: match-service
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: match-service
+    app.kubernetes.io/part-of: hirehub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: match-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: match-service
+        app.kubernetes.io/part-of: hirehub
+    spec:
+      containers:
+        - name: match-service
+          image: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/match-service:latest
+          ports:
+            - name: http
+              containerPort: 8005
+          env:
+            - name: PORT
+              value: "8005"
+            - name: LOG_LEVEL
+              value: "info"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8005
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8005
+            initialDelaySeconds: 15
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: match-service
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: match-service
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8005
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: match-service
+---
+# =============================================================================
+# Resume Service (Python/FastAPI)
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resume-service
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: resume-service
+    app.kubernetes.io/part-of: hirehub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: resume-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: resume-service
+        app.kubernetes.io/part-of: hirehub
+    spec:
+      containers:
+        - name: resume-service
+          image: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/resume-service:latest
+          ports:
+            - name: http
+              containerPort: 8003
+          env:
+            - name: PORT
+              value: "8003"
+            - name: LOG_LEVEL
+              value: "info"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8003
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8003
+            initialDelaySeconds: 15
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: resume-service
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: resume-service
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8003
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: resume-service
+---
+# =============================================================================
+# Notification Service (Go/Kafka)
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: notification-service
+    app.kubernetes.io/part-of: hirehub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: notification-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: notification-service
+        app.kubernetes.io/part-of: hirehub
+    spec:
+      containers:
+        - name: notification-service
+          image: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/notification-service:latest
+          ports:
+            - name: grpc
+              containerPort: 8007
+          env:
+            - name: GRPC_PORT
+              value: "8007"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: DATABASE_URL
+              value: "postgres://postgres:postgres123@postgres.demo.svc.cluster.local:5432/hirehub_users?sslmode=disable"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8007
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 8007
+            initialDelaySeconds: 15
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: notification-service
+spec:
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 8007
+      targetPort: grpc
+  selector:
+    app.kubernetes.io/name: notification-service
