@@ -162,23 +162,47 @@ spec:
         # Grafana configuration
         grafana.ini:
           server:
+            # CloudFront proxy support
             root_url: "%(protocol)s://%(domain)s/"
+            serve_from_sub_path: false
+          security:
+            # Allow embedding in iframes (if needed)
+            allow_embedding: true
+            # Cookie settings for CloudFront
+            cookie_secure: true
+            cookie_samesite: none
           analytics:
             check_for_updates: false
           log:
             mode: console
           grafana_net:
             url: https://grafana.net
+          # Live/WebSocket configuration
+          live:
+            allowed_origins: "*"
           # Feature toggles for new features
           feature_toggles:
             enable: traceqlEditor tempoSearch tempoBackendSearch tempoApmTable
 
-        # Service configuration
+        # Service configuration - NLB for CloudFront origin
         service:
-          type: ClusterIP
-          port: 3000
+          type: LoadBalancer
+          port: 80
+          targetPort: 3000
+          annotations:
+            # AWS Load Balancer Controller - NLB
+            service.beta.kubernetes.io/aws-load-balancer-type: external
+            service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+            service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+            # Security Group - CloudFront only
+            service.beta.kubernetes.io/aws-load-balancer-security-groups: sg-0ab9a81a0cbe68369
+            # Health check
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: /api/health
+            service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: HTTP
+            # Cross-zone load balancing
+            service.beta.kubernetes.io/aws-load-balancer-attributes: load_balancing.cross_zone.enabled=true
 
-        # Ingress (disabled - use port-forward for demo)
+        # Ingress (disabled - using NLB + CloudFront)
         ingress:
           enabled: false
 

@@ -1,0 +1,123 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 66.3.0
+    helm:
+      releaseName: kube-prometheus-stack
+      values: |
+        # Disable components we don't need (using LGTM stack instead)
+        grafana:
+          enabled: false  # Using our own Grafana
+
+        alertmanager:
+          enabled: false  # Not needed for demo
+
+        # Prometheus - collect metrics and remote write to Mimir
+        prometheus:
+          prometheusSpec:
+            # Remote write to Mimir
+            remoteWrite:
+              - url: http://mimir-nginx.monitoring.svc.cluster.local:80/api/v1/push
+                writeRelabelConfigs:
+                  - sourceLabels: [__name__]
+                    regex: '(.*)'
+                    targetLabel: __name__
+                    replacement: '$1'
+
+            # Retention - short since we're sending to Mimir
+            retention: 2h
+            retentionSize: "5GB"
+
+            # Resources
+            resources:
+              limits:
+                cpu: 1000m
+                memory: 2Gi
+              requests:
+                cpu: 200m
+                memory: 512Mi
+
+            # Storage
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 10Gi
+
+            # Service monitors
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+
+        # Node Exporter - collect node metrics
+        nodeExporter:
+          enabled: true
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+
+        # Kube State Metrics - collect K8s resource metrics
+        kubeStateMetrics:
+          enabled: true
+
+        # Prometheus Operator
+        prometheusOperator:
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+
+        # Kubelet metrics
+        kubelet:
+          enabled: true
+          serviceMonitor:
+            enabled: true
+
+        # CoreDNS metrics
+        coreDns:
+          enabled: true
+
+        # kube-proxy metrics
+        kubeProxy:
+          enabled: true
+
+        # kube-scheduler metrics
+        kubeScheduler:
+          enabled: false  # Not accessible in EKS
+
+        # kube-controller-manager metrics
+        kubeControllerManager:
+          enabled: false  # Not accessible in EKS
+
+        # etcd metrics
+        kubeEtcd:
+          enabled: false  # Not accessible in EKS
+
+  destination:
+    name: in-cluster
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

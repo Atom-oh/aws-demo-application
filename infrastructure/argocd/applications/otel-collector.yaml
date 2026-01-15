@@ -173,11 +173,12 @@ spec:
             debug:
               verbosity: basic
 
-            # Loki exporter for logs
-            otlphttp/loki:
-              endpoint: http://loki-gateway.monitoring.svc.cluster.local:3100/otlp
-              tls:
-                insecure: true
+            # Loki exporter for logs (using Loki native push API)
+            loki:
+              endpoint: http://loki-gateway.monitoring.svc.cluster.local:80/loki/api/v1/push
+              default_labels_enabled:
+                exporter: false
+                job: true
 
             # Tempo exporter for traces
             otlp/tempo:
@@ -190,6 +191,8 @@ spec:
               endpoint: http://mimir-nginx.monitoring.svc.cluster.local:80/api/v1/push
               tls:
                 insecure: true
+              resource_to_telemetry_conversion:
+                enabled: true
 
             # ClickHouse exporter for logs
             clickhouse:
@@ -208,7 +211,7 @@ spec:
               logs:
                 receivers: [otlp, filelog]
                 processors: [memory_limiter, k8sattributes, batch]
-                exporters: [otlphttp/loki, clickhouse]
+                exporters: [loki, clickhouse]
 
               # Traces pipeline - fan out to Tempo, ClickHouse
               traces:
@@ -219,7 +222,7 @@ spec:
               # Metrics pipeline - to Mimir
               metrics:
                 receivers: [otlp]
-                processors: [memory_limiter, batch]
+                processors: [memory_limiter, k8sattributes, batch]
                 exporters: [prometheusremotewrite/mimir]
 
         # Service account for k8s attributes

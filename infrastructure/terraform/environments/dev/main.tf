@@ -217,3 +217,37 @@ module "s3" {
 
   tags = var.tags
 }
+
+# Grafana Exposure Module (NLB + CloudFront)
+# Security Group allows only CloudFront IPs
+module "grafana_exposure" {
+  source = "../../modules/grafana-exposure"
+  count  = var.enable_grafana_external_access ? 1 : 0
+
+  environment    = var.environment
+  project_name   = var.project_name
+  vpc_id         = module.vpc.vpc_id
+  vpc_cidr       = var.vpc_cidr
+
+  # NLB DNS - set after K8s creates the NLB
+  nlb_dns_name      = var.grafana_nlb_dns_name
+  nlb_https_enabled = false  # NLB uses HTTP to Grafana pod
+
+  # CloudFront settings
+  price_class = "PriceClass_200"  # Asia, Europe, North America
+
+  # Custom domain (optional)
+  grafana_domain      = var.grafana_domain
+  hosted_zone_name    = var.hosted_zone_name
+  acm_certificate_arn = var.grafana_acm_certificate_arn
+
+  # Security
+  origin_verify_secret = var.grafana_origin_verify_secret
+  waf_acl_id           = var.grafana_waf_acl_id
+
+  # Geo restriction (optional)
+  geo_restriction_type      = "none"
+  geo_restriction_locations = []
+
+  tags = var.tags
+}

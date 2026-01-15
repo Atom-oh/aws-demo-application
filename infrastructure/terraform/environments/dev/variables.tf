@@ -164,3 +164,50 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# =============================================================================
+# Grafana External Access (NLB + CloudFront)
+# =============================================================================
+
+variable "enable_grafana_external_access" {
+  description = "Enable external access to Grafana via NLB + CloudFront"
+  type        = bool
+  default     = false
+}
+
+variable "grafana_nlb_dns_name" {
+  description = "NLB DNS name for Grafana (set after K8s creates the NLB)"
+  type        = string
+  default     = "placeholder.elb.amazonaws.com"
+}
+
+variable "grafana_domain" {
+  description = "Custom domain for Grafana (e.g., grafana.hirehub.example.com)"
+  type        = string
+  default     = ""
+}
+
+variable "hosted_zone_name" {
+  description = "Route53 hosted zone name"
+  type        = string
+  default     = ""
+}
+
+variable "grafana_acm_certificate_arn" {
+  description = "ACM certificate ARN for Grafana domain (must be in us-east-1)"
+  type        = string
+  default     = ""
+}
+
+variable "grafana_origin_verify_secret" {
+  description = "Secret header for CloudFront origin verification"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "grafana_waf_acl_id" {
+  description = "WAF Web ACL ID for Grafana CloudFront"
+  type        = string
+  default     = null
+}
