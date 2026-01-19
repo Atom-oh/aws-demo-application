@@ -49,7 +49,7 @@ spec:
               - name: Loki
                 type: loki
                 access: proxy
-                url: http://loki-gateway.monitoring.svc.cluster.local:3100
+                url: http://loki-gateway.monitoring.svc.cluster.local
                 isDefault: false
                 jsonData:
                   maxLines: 1000
@@ -185,6 +185,7 @@ spec:
             enable: traceqlEditor tempoSearch tempoBackendSearch tempoApmTable
 
         # Service configuration - NLB for CloudFront origin
+        # CloudFront에서 TLS 종료, NLB는 HTTP만 사용
         service:
           type: LoadBalancer
           port: 80
@@ -194,8 +195,10 @@ spec:
             service.beta.kubernetes.io/aws-load-balancer-type: external
             service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
             service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
-            # Security Group - CloudFront only
-            service.beta.kubernetes.io/aws-load-balancer-security-groups: sg-0ab9a81a0cbe68369
+            # CloudFront Only Security Group (pl-22a6434b prefix list)
+            # 이 SG는 수동 관리 - CloudFront에서만 접근 허용
+            service.beta.kubernetes.io/aws-load-balancer-security-groups: sg-09402be55e4b32c2c
+            service.beta.kubernetes.io/aws-load-balancer-manage-backend-security-group-rules: "false"
             # Health check
             service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: /api/health
             service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: HTTP

@@ -1,0 +1,161 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k6-scenarios
+  namespace: demo
+data:
+  scenarios.js: |
+    import http from 'k6/http';
+    import { check, sleep, group } from 'k6';
+
+    // Service URLs (direct service-to-service)
+    const USER_URL = __ENV.BASE_URL || 'http://user-service.demo.svc.cluster.local:8001';
+    const JOB_URL = __ENV.JOB_URL || 'http://job-service.demo.svc.cluster.local:8080';
+    const RESUME_URL = __ENV.RESUME_URL || 'http://resume-service.demo.svc.cluster.local:8003';
+    const MATCH_URL = __ENV.MATCH_URL || 'http://match-service.demo.svc.cluster.local:8005';
+
+    export const options = {
+      scenarios: {
+        job_seeker: {
+          executor: 'ramping-vus',
+          startVUs: 1,
+          stages: [
+            { duration: '20s', target: 3 },
+            { duration: '40s', target: 5 },
+            { duration: '20s', target: 0 },
+          ],
+          exec: 'jobSeekerFlow',
+        },
+        recruiter: {
+          executor: 'ramping-vus',
+          startVUs: 1,
+          stages: [
+            { duration: '20s', target: 2 },
+            { duration: '40s', target: 3 },
+            { duration: '20s', target: 0 },
+          ],
+          exec: 'recruiterFlow',
+          startTime: '5s',
+        },
+      },
+      thresholds: {
+        http_req_duration: ['p(95)<3000'],
+        http_req_failed: ['rate<0.8'],
+      },
+    };
+
+    function getHeaders() {
+      const traceId = Math.random().toString(16).substring(2, 34).padEnd(32, '0');
+      const spanId = Math.random().toString(16).substring(2, 18).padEnd(16, '0');
+      return {
+        'Content-Type': 'application/json',
+        'traceparent': `00-${traceId}-${spanId}-01`,
+        'X-Request-ID': `k6-${Date.now()}`,
+      };
+    }
+
+    export function jobSeekerFlow() {
+      const headers = getHeaders();
+      const userId = `user_${Math.random().toString(36).substring(7)}`;
+
+      group('User-Register', () => {
+        const res = http.post(`${USER_URL}/register`, JSON.stringify({
+          email: `${userId}@test.com`,
+          password: 'test1234',
+          name: `Test ${userId}`,
+        }), { headers, timeout: '10s' });
+        check(res, { 'user register ok': (r) => r.status < 500 });
+      });
+      sleep(1);
+
+      group('Resume-Create', () => {
+        const res = http.post(`${RESUME_URL}/resumes`, JSON.stringify({
+          user_id: userId,
+          title: 'Software Engineer',
+          skills: ['Go', 'Python', 'K8s'],
+        }), { headers, timeout: '10s' });
+        check(res, { 'resume create ok': (r) => r.status < 500 });
+      });
+      sleep(1);
+
+      group('Job-Search', () => {
+        const res = http.get(`${JOB_URL}/jobs?keyword=engineer`, { headers, timeout: '10s' });
+        check(res, { 'job search ok': (r) => r.status < 500 });
+      });
+      sleep(2);
+    }
+
+    export function recruiterFlow() {
+      const headers = getHeaders();
+
+      group('Job-Post', () => {
+        const res = http.post(`${JOB_URL}/jobs`, JSON.stringify({
+          title: 'Backend Engineer',
+          description: 'Looking for Go developer',
+          requirements: ['Go', '3+ years'],
+        }), { headers, timeout: '10s' });
+        check(res, { 'job post ok': (r) => r.status < 500 });
+      });
+      sleep(2);
+
+      group('Resume-Search', () => {
+        const res = http.get(`${RESUME_URL}/resumes?skills=Go`, { headers, timeout: '10s' });
+        check(res, { 'resume search ok': (r) => r.status < 500 });
+      });
+      sleep(1);
+
+      group('Match-Get', () => {
+        const res = http.get(`${MATCH_URL}/matches?job_id=job_1`, { headers, timeout: '10s' });
+        check(res, { 'match get ok': (r) => r.status < 500 });
+      });
+      sleep(2);
+    }
+
+    export default function() {
+      const res = http.get(`${USER_URL}/health`, { timeout: '5s' });
+      check(res, { 'health ok': (r) => r.status < 500 });
+      sleep(1);
+    }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k6-scenario-test
+  namespace: demo
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      containers:
+      - name: k6
+        image: grafana/k6:latest
+        command: ["k6", "run", "/scripts/scenarios.js"]
+        env:
+        - name: BASE_URL
+          value: "http://user-service.demo.svc.cluster.local:8001"
+        - name: JOB_URL
+          value: "http://job-service.demo.svc.cluster.local:8080"
+        - name: RESUME_URL
+          value: "http://resume-service.demo.svc.cluster.local:8003"
+        - name: MATCH_URL
+          value: "http://match-service.demo.svc.cluster.local:8005"
+        - name: K6_PROMETHEUS_RW_SERVER_URL
+          value: "http://mimir-nginx.monitoring.svc.cluster.local:80/api/v1/push"
+        - name: K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM
+          value: "true"
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+      restartPolicy: Never
+      volumes:
+      - name: scripts
+        configMap:
+          name: k6-scenarios
+  backoffLimit: 1

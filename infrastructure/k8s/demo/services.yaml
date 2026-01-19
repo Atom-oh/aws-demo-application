@@ -523,3 +523,74 @@ spec:
       targetPort: grpc
   selector:
     app.kubernetes.io/name: notification-service
+---
+# =============================================================================
+# Web Frontend (Next.js SSR)
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-frontend
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: web-frontend
+    app.kubernetes.io/part-of: hirehub
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: web-frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: web-frontend
+        app.kubernetes.io/part-of: hirehub
+    spec:
+      containers:
+        - name: web-frontend
+          image: 180294183052.dkr.ecr.ap-northeast-2.amazonaws.com/hirehub/web-frontend:latest
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: API_URL
+              value: "https://msa-demo-api.aws.atomai.click"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-frontend
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: web-frontend
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: web-frontend

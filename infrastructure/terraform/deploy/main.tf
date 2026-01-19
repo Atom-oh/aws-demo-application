@@ -164,8 +164,10 @@ module "eks" {
 }
 
 # =============================================================================
-# AWS Load Balancer Controller
+# AWS Load Balancer Controller - IAM & Pod Identity
 # =============================================================================
+# IAM resources (Role, Policy, Pod Identity Association) managed by Terraform
+# Helm deployment managed by ArgoCD: argocd/applications/alb-controller.yaml
 module "alb_controller" {
   source = "../modules/alb-controller"
 
@@ -221,6 +223,69 @@ module "eks_argocd" {
 }
 
 # =============================================================================
+# Frontend S3 Bucket for Static Assets
+# =============================================================================
+resource "aws_s3_bucket" "frontend" {
+  bucket = "${local.project_name}-${local.environment}-frontend"
+
+  tags = {
+    Name        = "${local.project_name}-${local.environment}-frontend"
+    Project     = local.project_name
+    Environment = local.environment
+  }
+}
+
+resource "aws_s3_bucket_versioning" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# S3 bucket policy for CloudFront OAC
+resource "aws_s3_bucket_policy" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AllowCloudFrontOAC"
+        Effect    = "Allow"
+        Principal = { Service = "cloudfront.amazonaws.com" }
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.frontend.arn}/*"
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = module.cloudfront.frontend_distribution_arn
+          }
+        }
+      }
+    ]
+  })
+
+  depends_on = [module.cloudfront]
+}
+
+# =============================================================================
 # CloudFront for Kong API Gateway and Frontend
 # =============================================================================
 module "cloudfront" {
@@ -236,13 +301,16 @@ module "cloudfront" {
   domain_name      = "*.aws.atomai.click"
   hosted_zone_name = "aws.atomai.click"
 
-  # Kong API Gateway Distribution
+  # Kong API Gateway Distribution (msa-demo-api.aws.atomai.click)
   create_kong_distribution = true
-  kong_domain              = "msa-demo.aws.atomai.click"
-  kong_origin_domain       = "k8s-kong-kongkong-500127eeac-ae814745eae1b163.elb.ap-northeast-2.amazonaws.com"
+  kong_domain              = "msa-demo-api.aws.atomai.click"
+  kong_origin_domain       = "k8s-kong-kongkong-60cc801a5a-234a19df93b2bffe.elb.ap-northeast-2.amazonaws.com"
 
-  # Frontend - disabled for now
-  create_frontend_distribution = false
+  # Frontend Distribution (msa-demo.aws.atomai.click)
+  create_frontend_distribution = true
+  frontend_domain              = "msa-demo.aws.atomai.click"
+  frontend_s3_bucket_domain    = aws_s3_bucket.frontend.bucket_regional_domain_name
+  frontend_ssr_origin_domain   = "k8s-kong-kongkong-60cc801a5a-234a19df93b2bffe.elb.ap-northeast-2.amazonaws.com"
 
   tags = {
     Project     = local.project_name
@@ -323,4 +391,20 @@ output "kong_api_url" {
 output "kong_cloudfront_distribution_id" {
   description = "CloudFront Distribution ID for Kong"
   value       = module.cloudfront.kong_distribution_id
+}
+
+# Frontend Outputs
+output "frontend_url" {
+  description = "Frontend URL via CloudFront"
+  value       = module.cloudfront.frontend_url
+}
+
+output "frontend_s3_bucket" {
+  description = "Frontend S3 bucket name for static assets"
+  value       = aws_s3_bucket.frontend.id
+}
+
+output "frontend_cloudfront_distribution_id" {
+  description = "CloudFront Distribution ID for Frontend"
+  value       = module.cloudfront.frontend_distribution_id
 }

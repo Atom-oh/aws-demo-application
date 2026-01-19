@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k6-simple
+  namespace: demo
+data:
+  test.js: |
+    import http from 'k6/http';
+    import { check, sleep } from 'k6';
+
+    export const options = {
+      vus: 5,
+      duration: '60s',
+      thresholds: {
+        http_req_failed: ['rate<0.9'],
+      },
+    };
+
+    const services = [
+      { name: 'resume-service', url: 'http://resume-service.demo.svc.cluster.local:8003' },
+      { name: 'match-service', url: 'http://match-service.demo.svc.cluster.local:8005' },
+      { name: 'ai-service', url: 'http://ai-service.demo.svc.cluster.local:8006' },
+    ];
+
+    function getHeaders() {
+      const traceId = Math.random().toString(16).substring(2, 34).padEnd(32, '0');
+      const spanId = Math.random().toString(16).substring(2, 18).padEnd(16, '0');
+      return {
+        'Content-Type': 'application/json',
+        'traceparent': '00-' + traceId + '-' + spanId + '-01',
+        'X-Request-ID': 'k6-' + traceId.substring(0, 8),
+      };
+    }
+
+    export default function() {
+      const headers = getHeaders();
+      const svc = services[Math.floor(Math.random() * services.length)];
+
+      let res = http.get(svc.url + '/health', { headers: headers, timeout: '5s' });
+      check(res, { 'health ok': (r) => r.status < 500 });
+
+      if (svc.name === 'resume-service') {
+        res = http.get(svc.url + '/resumes', { headers: headers, timeout: '5s' });
+        check(res, { 'resume list': (r) => r.status < 500 });
+      } else if (svc.name === 'match-service') {
+        res = http.get(svc.url + '/matches', { headers: headers, timeout: '5s' });
+        check(res, { 'match list': (r) => r.status < 500 });
+      } else if (svc.name === 'ai-service') {
+        res = http.get(svc.url + '/status', { headers: headers, timeout: '5s' });
+        check(res, { 'ai status': (r) => r.status < 500 });
+      }
+
+      sleep(1);
+    }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k6-simple-test
+  namespace: demo
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      containers:
+      - name: k6
+        image: grafana/k6:latest
+        command: ["k6", "run", "/scripts/test.js"]
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+      restartPolicy: Never
+      volumes:
+      - name: scripts
+        configMap:
+          name: k6-simple
+  backoffLimit: 1

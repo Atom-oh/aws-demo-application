@@ -58,6 +58,13 @@ spec:
           plugins: bundled
 
         # ===========================================
+        # Image Configuration (ECR Public to avoid Docker Hub rate limits)
+        # ===========================================
+        image:
+          repository: public.ecr.aws/docker/library/kong
+          tag: "3.6"
+
+        # ===========================================
         # Deployment Configuration
         # ===========================================
         replicaCount: 2
@@ -98,26 +105,29 @@ spec:
 
         # ===========================================
         # Proxy Service Configuration (AWS NLB)
+        # CloudFront에서 TLS 종료, 내부는 HTTP만 사용
         # ===========================================
         proxy:
           enabled: true
           type: LoadBalancer
           annotations:
-            service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+            service.beta.kubernetes.io/aws-load-balancer-type: "external"
+            service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
             service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
             service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
-            service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
             service.beta.kubernetes.io/aws-load-balancer-healthcheck-healthy-threshold: "2"
             service.beta.kubernetes.io/aws-load-balancer-healthcheck-unhealthy-threshold: "2"
             service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: "10"
+            # CloudFront Only Security Group (pl-22a6434b prefix list)
+            # 이 SG는 수동 관리 - CloudFront에서만 접근 허용
+            service.beta.kubernetes.io/aws-load-balancer-security-groups: "sg-09402be55e4b32c2c"
+            service.beta.kubernetes.io/aws-load-balancer-manage-backend-security-group-rules: "false"
           http:
             enabled: true
             containerPort: 8000
             servicePort: 80
           tls:
-            enabled: true
-            containerPort: 8443
-            servicePort: 443
+            enabled: false  # TLS termination at CloudFront
           labels:
             app.kubernetes.io/component: proxy
 

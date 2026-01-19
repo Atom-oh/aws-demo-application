@@ -26,17 +26,30 @@ data "aws_route53_zone" "main" {
 }
 
 # =============================================================================
-# CloudFront Distribution for Kong API Gateway
+# CloudFront Distribution for Kong API Gateway (Unified: API + Frontend)
 # =============================================================================
+
+# Origin Access Control for S3 static assets (Kong distribution)
+resource "aws_cloudfront_origin_access_control" "kong_s3" {
+  count = var.create_kong_distribution && var.kong_s3_static_bucket_domain != "" ? 1 : 0
+
+  name                              = "${local.name}-kong-s3-oac"
+  description                       = "OAC for S3 static assets in Kong distribution"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
 resource "aws_cloudfront_distribution" "kong" {
   count = var.create_kong_distribution ? 1 : 0
 
   enabled         = true
   is_ipv6_enabled = true
-  comment         = "${local.name}-kong-api"
+  comment         = "${local.name}-kong-unified"
   price_class     = var.price_class
   aliases         = [var.kong_domain]
 
+  # Origin 1: Kong NLB (API + SSR)
   origin {
     domain_name = var.kong_origin_domain
     origin_id   = "kong"
@@ -55,17 +68,94 @@ resource "aws_cloudfront_distribution" "kong" {
     }
   }
 
+  # Origin 2: S3 for static assets (if configured)
+  dynamic "origin" {
+    for_each = var.kong_s3_static_bucket_domain != "" ? [1] : []
+    content {
+      domain_name              = var.kong_s3_static_bucket_domain
+      origin_id                = "s3-static"
+      origin_access_control_id = aws_cloudfront_origin_access_control.kong_s3[0].id
+    }
+  }
+
+  # Default: All requests go to Kong (API + Next.js SSR)
   default_cache_behavior {
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "kong"
 
-    # API requests - no caching
+    # No caching for dynamic content
     cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # CachingDisabled
     origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3" # AllViewer
 
     viewer_protocol_policy = "redirect-to-https"
     compress               = true
+  }
+
+  # _next/static/* - Immutable static assets (JS, CSS chunks) -> S3
+  dynamic "ordered_cache_behavior" {
+    for_each = var.kong_s3_static_bucket_domain != "" ? [1] : []
+    content {
+      path_pattern     = "/_next/static/*"
+      allowed_methods  = ["GET", "HEAD"]
+      cached_methods   = ["GET", "HEAD"]
+      target_origin_id = "s3-static"
+
+      cache_policy_id          = "658327ea-f89d-4fab-a63d-7e88639e58f6" # CachingOptimized
+      origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf" # CORS-S3Origin
+
+      viewer_protocol_policy = "redirect-to-https"
+      compress               = true
+    }
+  }
+
+  # /images/* - Static images from S3
+  dynamic "ordered_cache_behavior" {
+    for_each = var.kong_s3_static_bucket_domain != "" ? [1] : []
+    content {
+      path_pattern     = "/images/*"
+      allowed_methods  = ["GET", "HEAD"]
+      cached_methods   = ["GET", "HEAD"]
+      target_origin_id = "s3-static"
+
+      cache_policy_id          = "658327ea-f89d-4fab-a63d-7e88639e58f6" # CachingOptimized
+      origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf" # CORS-S3Origin
+
+      viewer_protocol_policy = "redirect-to-https"
+      compress               = true
+    }
+  }
+
+  # /favicon.ico - Static file from S3
+  dynamic "ordered_cache_behavior" {
+    for_each = var.kong_s3_static_bucket_domain != "" ? [1] : []
+    content {
+      path_pattern     = "/favicon.ico"
+      allowed_methods  = ["GET", "HEAD"]
+      cached_methods   = ["GET", "HEAD"]
+      target_origin_id = "s3-static"
+
+      cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6" # CachingOptimized
+
+      viewer_protocol_policy = "redirect-to-https"
+      compress               = true
+    }
+  }
+
+  # /robots.txt - Static file from S3
+  dynamic "ordered_cache_behavior" {
+    for_each = var.kong_s3_static_bucket_domain != "" ? [1] : []
+    content {
+      path_pattern     = "/robots.txt"
+      allowed_methods  = ["GET", "HEAD"]
+      cached_methods   = ["GET", "HEAD"]
+      target_origin_id = "s3-static"
+
+      cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6" # CachingOptimized
+
+      viewer_protocol_policy = "redirect-to-https"
+      compress               = true
+    }
   }
 
   restrictions {
@@ -85,7 +175,7 @@ resource "aws_cloudfront_distribution" "kong" {
 
   tags = merge(local.common_tags, {
     Name    = "${local.name}-kong-cf"
-    Service = "kong"
+    Service = "unified"
   })
 }
 
@@ -132,7 +222,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = "https-only"
+      origin_protocol_policy = "http-only"  # NLB internal - no TLS cert
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }

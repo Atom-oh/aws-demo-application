@@ -23,6 +23,11 @@ output "kong_url" {
   value       = var.create_kong_distribution ? "https://${var.kong_domain}" : null
 }
 
+output "kong_s3_oac_id" {
+  description = "Origin Access Control ID for S3 static assets in Kong distribution"
+  value       = var.create_kong_distribution && var.kong_s3_static_bucket_domain != "" ? aws_cloudfront_origin_access_control.kong_s3[0].id : null
+}
+
 # =============================================================================
 # Frontend Distribution Outputs
 # =============================================================================

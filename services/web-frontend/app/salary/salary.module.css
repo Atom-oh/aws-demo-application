@@ -1,0 +1,236 @@
+.page {
+  padding-top: var(--header-height);
+  min-height: 100vh;
+  background: var(--bg-secondary);
+}
+
+.pageHeader {
+  background: var(--navy-900);
+  padding: 48px 0;
+  color: white;
+}
+
+.pageTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.pageSubtitle {
+  font-size: 1rem;
+  color: var(--navy-300);
+}
+
+.filterSection {
+  background: white;
+  border-bottom: 1px solid var(--navy-200);
+  padding: 20px 0;
+  position: sticky;
+  top: var(--header-height);
+  z-index: 100;
+}
+
+.filterRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--navy-700);
+}
+
+.filterSelect {
+  padding: 8px 32px 8px 12px;
+  font-size: 0.875rem;
+  border: 1px solid var(--navy-200);
+  border-radius: var(--radius-md);
+  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;
+  appearance: none;
+  cursor: pointer;
+}
+
+.resultsSection {
+  padding: 32px 0;
+}
+
+.infoBox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+}
+
+.infoIcon {
+  font-size: 1.25rem;
+}
+
+.infoBox p {
+  font-size: 0.875rem;
+  color: var(--navy-700);
+}
+
+.salaryTable {
+  background: white;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--navy-200);
+  overflow: hidden;
+}
+
+.tableHeader {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.2fr 2fr 0.8fr;
+  gap: 16px;
+  padding: 16px 24px;
+  background: var(--navy-50);
+  font-size: 0.813rem;
+  font-weight: 600;
+  color: var(--navy-600);
+  text-transform: uppercase;
+}
+
+.tableRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.2fr 2fr 0.8fr;
+  gap: 16px;
+  padding: 20px 24px;
+  border-top: 1px solid var(--navy-100);
+  align-items: center;
+}
+
+.tableRow:hover {
+  background: var(--navy-50);
+}
+
+.colPosition {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.positionName {
+  font-weight: 600;
+  color: var(--navy-900);
+}
+
+.category {
+  font-size: 0.75rem;
+  color: var(--navy-500);
+}
+
+.colExperience {
+  font-size: 0.875rem;
+  color: var(--navy-700);
+}
+
+.colAvg {
+  text-align: center;
+}
+
+.avgSalary {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--coral-500);
+}
+
+.colRange {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rangeBar {
+  height: 8px;
+  background: var(--navy-100);
+  border-radius: 4px;
+  position: relative;
+}
+
+.rangeFill {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--coral-400), var(--coral-500));
+  border-radius: 4px;
+}
+
+.avgDot {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  background: white;
+  border: 2px solid var(--coral-600);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.rangeValues {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--navy-500);
+}
+
+.colSamples {
+  font-size: 0.875rem;
+  color: var(--navy-500);
+  text-align: center;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--navy-500);
+}
+
+@media (max-width: 1024px) {
+  .tableHeader,
+  .tableRow {
+    grid-template-columns: 1.5fr 1fr 1fr 2fr 0.8fr;
+    font-size: 0.813rem;
+    padding: 12px 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .tableHeader {
+    display: none;
+  }
+
+  .tableRow {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .colPosition {
+    order: 1;
+  }
+
+  .colAvg {
+    order: 2;
+    text-align: left;
+  }
+
+  .colRange {
+    order: 3;
+  }
+
+  .colExperience,
+  .colSamples {
+    display: none;
+  }
+}

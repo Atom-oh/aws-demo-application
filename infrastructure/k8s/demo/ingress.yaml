@@ -11,6 +11,7 @@ metadata:
   annotations:
     konghq.com/strip-path: "true"
     konghq.com/protocols: "http,https"
+    konghq.com/plugins: "cors-plugin"
 spec:
   ingressClassName: kong
   rules:
@@ -110,3 +111,30 @@ spec:
                 name: ai-service
                 port:
                   number: 8006
+---
+# Web Frontend (Next.js SSR) - Catch-all for non-API routes
+# Lower regex priority means this matches after more specific API routes
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hirehub-frontend
+  namespace: demo
+  labels:
+    app.kubernetes.io/part-of: hirehub
+  annotations:
+    konghq.com/strip-path: "false"
+    konghq.com/protocols: "http,https"
+    konghq.com/regex-priority: "1"
+spec:
+  ingressClassName: kong
+  rules:
+    - http:
+        paths:
+          # Catch-all route for frontend (SSR pages)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-frontend
+                port:
+                  number: 3000

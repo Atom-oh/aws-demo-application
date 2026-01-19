@@ -1,0 +1,272 @@
+.page {
+  padding-top: var(--header-height);
+  min-height: 100vh;
+  background: var(--bg-secondary);
+}
+
+.pageHeader {
+  background: var(--navy-900);
+  padding: 48px 0;
+  color: white;
+}
+
+.pageTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.pageSubtitle {
+  font-size: 1rem;
+  color: var(--navy-300);
+}
+
+.filterSection {
+  background: white;
+  border-bottom: 1px solid var(--navy-200);
+  padding: 20px 0;
+  position: sticky;
+  top: var(--header-height);
+  z-index: 100;
+}
+
+.filterRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--navy-700);
+}
+
+.filterSelect {
+  padding: 8px 32px 8px 12px;
+  font-size: 0.875rem;
+  border: 1px solid var(--navy-200);
+  border-radius: var(--radius-md);
+  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;
+  appearance: none;
+  cursor: pointer;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 12px 8px 36px;
+  font-size: 0.875rem;
+  border: 1px solid var(--navy-200);
+  border-radius: var(--radius-md);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") no-repeat 10px center;
+}
+
+.resultsSection {
+  padding: 32px 0;
+}
+
+.resultsCount {
+  font-size: 0.938rem;
+  color: var(--navy-600);
+  margin-bottom: 24px;
+}
+
+.resultsCount strong {
+  color: var(--coral-500);
+  font-weight: 700;
+}
+
+.companiesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.companyCard {
+  background: white;
+  border: 1px solid var(--navy-200);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  transition: all 0.2s;
+}
+
+.companyCard:hover {
+  border-color: var(--coral-500);
+  box-shadow: var(--shadow-lg);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.companyLogo {
+  width: 56px;
+  height: 56px;
+  background: var(--navy-100);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--navy-700);
+  flex-shrink: 0;
+}
+
+.companyMeta {
+  flex: 1;
+}
+
+.companyName {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--navy-900);
+  margin-bottom: 4px;
+}
+
+.companyIndustry {
+  font-size: 0.875rem;
+  color: var(--navy-500);
+}
+
+.rating {
+  text-align: right;
+}
+
+.ratingScore {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--coral-500);
+}
+
+.reviewCount {
+  font-size: 0.75rem;
+  color: var(--navy-400);
+}
+
+.companyDesc {
+  font-size: 0.938rem;
+  color: var(--navy-600);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 16px;
+  background: var(--navy-50);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.infoLabel {
+  font-size: 0.75rem;
+  color: var(--navy-500);
+}
+
+.infoValue {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--navy-900);
+}
+
+.benefits {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.benefitLabel {
+  font-size: 0.75rem;
+  color: var(--navy-500);
+}
+
+.benefitTag {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--emerald-500);
+  border-radius: var(--radius-sm);
+}
+
+.moreTag {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  color: var(--navy-400);
+}
+
+.techStack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.techTag {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  background: var(--navy-100);
+  color: var(--navy-600);
+  border-radius: var(--radius-sm);
+}
+
+.cardActions {
+  border-top: 1px solid var(--navy-100);
+  padding-top: 16px;
+}
+
+.viewJobsBtn {
+  display: block;
+  text-align: center;
+  padding: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--coral-500);
+  background: rgba(249, 115, 22, 0.1);
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
+}
+
+.viewJobsBtn:hover {
+  background: var(--coral-500);
+  color: white;
+}
+
+@media (max-width: 1024px) {
+  .companiesGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .infoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .filterRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -73,6 +73,13 @@ variable "origin_verify_secret" {
   sensitive   = true
 }
 
+# S3 static origin for Kong distribution (unified domain)
+variable "kong_s3_static_bucket_domain" {
+  description = "S3 bucket regional domain name for static assets served from Kong domain"
+  type        = string
+  default     = ""
+}
+
 # =============================================================================
 # Frontend Distribution Settings
 # =============================================================================

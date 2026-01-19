@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: https://aws.github.io/eks-charts
     chart: aws-load-balancer-controller
-    targetRevision: 1.11.0  # Latest stable version
+    targetRevision: 1.17.1  # Latest stable version (v2.17.1)
     helm:
       releaseName: aws-load-balancer-controller
       values: |
