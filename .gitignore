@@ -8,6 +8,21 @@
 *.pyc
 .coverage
 
+# Node.js / Next.js
+**/node_modules/
+**/.next/
+**/out/
+**/build/
+*.tsbuildinfo
+
 # IDE
 .idea/
 .vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env files
+.env*.local
+.env
