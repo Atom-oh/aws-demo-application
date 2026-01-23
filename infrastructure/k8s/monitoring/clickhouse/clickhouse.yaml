@@ -1,0 +1,155 @@
+---
+# ClickHouse StatefulSet for OTEL Log Storage
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: clickhouse
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/component: database
+spec:
+  serviceName: clickhouse
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: clickhouse
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: clickhouse
+    spec:
+      containers:
+        - name: clickhouse
+          image: clickhouse/clickhouse-server:24.8
+          ports:
+            - containerPort: 8123
+              name: http
+              protocol: TCP
+            - containerPort: 9000
+              name: native
+              protocol: TCP
+          env:
+            - name: CLICKHOUSE_USER
+              value: "admin"
+            - name: CLICKHOUSE_PASSWORD
+              value: "clickhouse123"
+            - name: CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT
+              value: "1"
+          resources:
+            limits:
+              cpu: "1"
+              memory: 2Gi
+            requests:
+              cpu: 250m
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/clickhouse
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8123
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 8123
+            initialDelaySeconds: 10
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: gp3
+        resources:
+          requests:
+            storage: 10Gi
+---
+# ClickHouse Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: clickhouse
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: clickhouse
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8123
+      targetPort: 8123
+      protocol: TCP
+    - name: native
+      port: 9000
+      targetPort: 9000
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: clickhouse
+---
+# OTEL Database and Tables for Logs/Traces
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-init
+  namespace: monitoring
+data:
+  init.sql: |
+    -- Create OTEL database
+    CREATE DATABASE IF NOT EXISTS otel;
+
+    -- Logs table for OTEL Collector
+    CREATE TABLE IF NOT EXISTS otel.logs (
+        Timestamp DateTime64(9),
+        TraceId String,
+        SpanId String,
+        TraceFlags UInt32,
+        SeverityText LowCardinality(String),
+        SeverityNumber Int32,
+        ServiceName LowCardinality(String),
+        Body String,
+        ResourceSchemaUrl String,
+        ResourceAttributes Map(LowCardinality(String), String),
+        ScopeSchemaUrl String,
+        ScopeName String,
+        ScopeVersion String,
+        ScopeAttributes Map(LowCardinality(String), String),
+        LogAttributes Map(LowCardinality(String), String)
+    ) ENGINE = MergeTree()
+    ORDER BY (ServiceName, Timestamp)
+    TTL toDateTime(Timestamp) + INTERVAL 7 DAY;
+
+    -- Traces table for OTEL Collector
+    CREATE TABLE IF NOT EXISTS otel.traces (
+        Timestamp DateTime64(9),
+        TraceId String,
+        SpanId String,
+        ParentSpanId String,
+        TraceState String,
+        SpanName LowCardinality(String),
+        SpanKind LowCardinality(String),
+        ServiceName LowCardinality(String),
+        ResourceAttributes Map(LowCardinality(String), String),
+        ScopeName String,
+        ScopeVersion String,
+        SpanAttributes Map(LowCardinality(String), String),
+        Duration Int64,
+        StatusCode LowCardinality(String),
+        StatusMessage String,
+        Events Nested (
+            Timestamp DateTime64(9),
+            Name LowCardinality(String),
+            Attributes Map(LowCardinality(String), String)
+        ),
+        Links Nested (
+            TraceId String,
+            SpanId String,
+            TraceState String,
+            Attributes Map(LowCardinality(String), String)
+        )
+    ) ENGINE = MergeTree()
+    ORDER BY (ServiceName, Timestamp)
+    TTL toDateTime(Timestamp) + INTERVAL 7 DAY;

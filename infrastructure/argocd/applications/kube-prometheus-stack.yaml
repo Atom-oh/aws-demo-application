@@ -26,7 +26,7 @@ spec:
           prometheusSpec:
             # Remote write to Mimir
             remoteWrite:
-              - url: http://mimir-nginx.monitoring.svc.cluster.local:80/api/v1/push
+              - url: http://mimir.monitoring.svc.cluster.local:8080/api/v1/push
                 writeRelabelConfigs:
                   - sourceLabels: [__name__]
                     regex: '(.*)'
@@ -37,19 +37,26 @@ spec:
             retention: 2h
             retentionSize: "5GB"
 
-            # Resources
+            # Resources (increased for WAL recovery)
             resources:
               limits:
-                cpu: 1000m
-                memory: 2Gi
+                cpu: 2
+                memory: 4Gi
               requests:
-                cpu: 200m
-                memory: 512Mi
+                cpu: 500m
+                memory: 1Gi
 
-            # Storage
+            # Startup probe - increase timeout for WAL replay
+            startupProbe:
+              failureThreshold: 60
+              periodSeconds: 15
+              timeoutSeconds: 10
+
+            # Storage (gp3 for better performance)
             storageSpec:
               volumeClaimTemplate:
                 spec:
+                  storageClassName: gp3
                   accessModes: ["ReadWriteOnce"]
                   resources:
                     requests:
